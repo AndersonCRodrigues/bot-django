@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Personagens - AI RPG APP{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0A0A0A]">
+    <nav class="sticky top-0 z-50 bg-[#0F0F0F] border-b border-[#27272A] backdrop-blur-xl bg-opacity-90">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14">
+                <div class="flex items-center space-x-3">
+                    <a href="{% url 'adventures:list' %}" class="p-2 text-[#A1A1AA] hover:text-white hover:bg-[#1A1A1A] rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </a>
+                    <span class="text-base font-semibold text-white">Meus Personagens</span>
+                </div>
+                <a href="{% url 'characters:create' %}" class="px-4 py-2 bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold rounded-lg transition-colors">
+                    Criar Personagem
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-6 bg-[#0F0F0F] border border-[#22C55E] text-[#22C55E] px-4 py-3 rounded-lg text-sm">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if characters %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for character in characters %}
+                <a href="{% url 'characters:detail' character._id %}" class="group block bg-[#0F0F0F] rounded-xl border border-[#27272A] hover:border-[#3F3F46] transition-all duration-200 overflow-hidden">
+                    <div class="p-5">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold text-white mb-1 group-hover:text-[#6366F1] transition-colors">{{ character.name }}</h3>
+                                <p class="text-[#71717A] text-xs">Criado em {{ character.created_at|date:"d/m/Y" }}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-[#1A1A1A] rounded-lg flex items-center justify-center border border-[#27272A]">
+                                <span class="text-2xl">⚔️</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
+                                <div class="text-xs text-[#71717A] mb-1">HABILIDADE</div>
+                                <div class="text-xl font-bold text-white">{{ character.skill }}</div>
+                            </div>
+                            <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
+                                <div class="text-xs text-[#71717A] mb-1">ENERGIA</div>
+                                <div class="text-xl font-bold text-white">{{ character.stamina }}</div>
+                            </div>
+                            <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
+                                <div class="text-xs text-[#71717A] mb-1">SORTE</div>
+                                <div class="text-xl font-bold text-white">{{ character.luck }}</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2 text-[#A1A1AA]">
+                                <span>💰 {{ character.gold }}</span>
+                                <span>🍞 {{ character.provisions }}</span>
+                            </div>
+                            <span class="text-[#6366F1] group-hover:underline">Ver Ficha →</span>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-20">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-[#1A1A1A] rounded-2xl border border-[#27272A] mb-6">
+                    <span class="text-5xl">⚔️</span>
+                </div>
+                <h2 class="text-xl font-semibold text-white mb-2">Nenhum Personagem Criado</h2>
+                <p class="text-[#71717A] mb-6">Crie seu primeiro aventureiro para começar</p>
+                <a href="{% url 'characters:create' %}" class="inline-flex items-center px-6 py-3 bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold rounded-lg transition-colors">
+                    Criar Primeiro Personagem
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

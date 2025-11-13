@@ -10,7 +10,7 @@ from .models import Profile
 
 def register_view(request):
     if request.user.is_authenticated:
-        return redirect("accounts:profile")
+        return redirect("adventures:list")
 
     if request.method == "POST":
         form = RegisterForm(request.POST)
@@ -18,7 +18,7 @@ def register_view(request):
             user = form.save()
             login(request, user)
             messages.success(request, "Conta criada com sucesso!")
-            return redirect("accounts:profile")
+            return redirect("adventures:list")
     else:
         form = RegisterForm()
 
@@ -27,7 +27,7 @@ def register_view(request):
 
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect("accounts:profile")
+        return redirect("adventures:list")
 
     if request.method == "POST":
         form = LoginForm(request, data=request.POST)
@@ -38,7 +38,7 @@ def login_view(request):
             if user is not None:
                 login(request, user)
                 messages.success(request, f"Bem-vindo, {username}!")
-                next_url = request.GET.get("next", "accounts:profile")
+                next_url = request.GET.get("next", "adventures:list")
                 return redirect(next_url)
     else:
         form = LoginForm()
@@ -54,7 +54,7 @@ def logout_view(request):
 
 @login_required
 def profile_view(request):
-    profile = request.user.profile
+    profile, created = Profile.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
         form = ProfileForm(request.POST, request.FILES, instance=profile)

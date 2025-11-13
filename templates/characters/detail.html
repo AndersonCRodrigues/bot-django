@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ character.name }} - AI RPG APP{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0A0A0A]">
+    <nav class="sticky top-0 z-50 bg-[#0F0F0F] border-b border-[#27272A] backdrop-blur-xl bg-opacity-90">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14">
+                <a href="{% url 'characters:list' %}" class="p-2 text-[#A1A1AA] hover:text-white hover:bg-[#1A1A1A] rounded-lg transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                <span class="text-sm font-medium text-white">Ficha do Personagem</span>
+                <a href="{% url 'characters:delete' character._id %}" class="p-2 text-[#EF4444] hover:bg-[#1A1A1A] rounded-lg transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] overflow-hidden">
+            <div class="p-6 border-b border-[#27272A]">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <h1 class="text-2xl font-bold text-white mb-2">{{ character.name }}</h1>
+                        <p class="text-[#71717A] text-sm">Criado em {{ character.created_at|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    <div class="w-16 h-16 bg-[#1A1A1A] rounded-xl flex items-center justify-center border border-[#27272A]">
+                        <span class="text-4xl">⚔️</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <h2 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                    <span>📊</span>
+                    <span>Atributos</span>
+                </h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-[#0A0A0A] rounded-lg p-5 border border-[#27272A]">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm text-[#71717A]">HABILIDADE</span>
+                            <span class="text-2xl">💪</span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold text-white">{{ character.skill }}</span>
+                            <span class="text-sm text-[#52525B]">/ {{ character.initial_skill }}</span>
+                        </div>
+                        <div class="mt-2 h-2 bg-[#1A1A1A] rounded-full overflow-hidden">
+                            <div class="h-full bg-[#6366F1] rounded-full transition-all" style="width: {% widthratio character.skill character.initial_skill 100 %}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#0A0A0A] rounded-lg p-5 border border-[#27272A]">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm text-[#71717A]">ENERGIA</span>
+                            <span class="text-2xl">❤️</span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold text-white">{{ character.stamina }}</span>
+                            <span class="text-sm text-[#52525B]">/ {{ character.initial_stamina }}</span>
+                        </div>
+                        <div class="mt-2 h-2 bg-[#1A1A1A] rounded-full overflow-hidden">
+                            <div class="h-full bg-[#EF4444] rounded-full transition-all" style="width: {% widthratio character.stamina character.initial_stamina 100 %}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#0A0A0A] rounded-lg p-5 border border-[#27272A]">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm text-[#71717A]">SORTE</span>
+                            <span class="text-2xl">🍀</span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold text-white">{{ character.luck }}</span>
+                            <span class="text-sm text-[#52525B]">/ {{ character.initial_luck }}</span>
+                        </div>
+                        <div class="mt-2 h-2 bg-[#1A1A1A] rounded-full overflow-hidden">
+                            <div class="h-full bg-[#22C55E] rounded-full transition-all" style="width: {% widthratio character.luck character.initial_luck 100 %}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-[#27272A]">
+                <h2 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                    <span>💰</span>
+                    <span>Recursos</span>
+                </h2>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-[#0A0A0A] rounded-lg p-4 border border-[#27272A]">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-[#1A1A1A] rounded-lg flex items-center justify-center">
+                                <span class="text-xl">💰</span>
+                            </div>
+                            <div>
+                                <div class="text-xs text-[#71717A]">Ouro</div>
+                                <div class="text-xl font-bold text-white">{{ character.gold }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#0A0A0A] rounded-lg p-4 border border-[#27272A]">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-[#1A1A1A] rounded-lg flex items-center justify-center">
+                                <span class="text-xl">🍞</span>
+                            </div>
+                            <div>
+                                <div class="text-xs text-[#71717A]">Provisões</div>
+                                <div class="text-xl font-bold text-white">{{ character.provisions }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-[#27272A]">
+                <h2 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                    <span>🎒</span>
+                    <span>Equipamento</span>
+                </h2>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {% for item in character.equipment %}
+                    <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
+                        <div class="text-[#A1A1AA] text-sm">{{ item }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if character.notes %}
+            <div class="p-6 border-t border-[#27272A]">
+                <h2 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                    <span>📖</span>
+                    <span>História</span>
+                </h2>
+                <p class="text-[#A1A1AA] text-sm leading-relaxed whitespace-pre-wrap">{{ character.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="text-center">
+            <a href="{% url 'characters:list' %}" class="text-[#6366F1] hover:text-[#5558E3] text-sm font-medium transition-colors">
+                ← Voltar para Lista
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

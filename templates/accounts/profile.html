@@ -4,110 +4,102 @@
 {% block title %}Perfil - AI RPG APP{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-900 py-12 px-4">
-    <div class="max-w-2xl mx-auto">
-        <div class="flex items-center justify-between mb-8">
-            <h1 class="text-3xl font-bold text-white">Meu Perfil</h1>
-            <a href="{% url 'accounts:logout' %}" class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-full transition-colors">
-                🚪 Sair
+<div class="min-h-screen bg-[#0A0A0A] py-6">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-semibold text-white">Perfil</h1>
+            <a href="{% url 'accounts:logout' %}" class="px-4 py-2 text-[#71717A] hover:text-white hover:bg-[#1A1A1A] border border-[#27272A] text-sm font-medium rounded-lg transition-all">
+                Sair
             </a>
         </div>
 
         {% if messages %}
             {% for message in messages %}
-                <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded-2xl">
-                    <span class="font-semibold">{{ message }}</span>
+                <div class="mb-4 bg-[#0F0F0F] border border-[#22C55E] text-[#22C55E] px-4 py-3 rounded-lg text-sm">
+                    {{ message }}
                 </div>
             {% endfor %}
         {% endif %}
 
-        <div class="bg-white rounded-3xl shadow-2xl overflow-hidden">
-            <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
-                <div class="flex items-center space-x-6">
+        <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] overflow-hidden">
+            <div class="p-6 border-b border-[#27272A]">
+                <div class="flex items-center space-x-4">
                     {% if profile.avatar %}
-                        <img src="{{ profile.avatar.url }}" alt="{{ user.username }}" class="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover">
+                        <img src="{{ profile.avatar.url }}" alt="{{ user.username }}" class="w-16 h-16 rounded-lg object-cover border border-[#27272A]">
                     {% else %}
-                        <div class="w-24 h-24 rounded-full border-4 border-white shadow-lg bg-blue-800 flex items-center justify-center">
-                            <span class="text-4xl font-bold">{{ user.username.0|upper }}</span>
+                        <div class="w-16 h-16 rounded-lg bg-[#1A1A1A] border border-[#27272A] flex items-center justify-center">
+                            <span class="text-2xl font-semibold text-white">{{ user.username.0|upper }}</span>
                         </div>
                     {% endif %}
                     <div>
-                        <h2 class="text-3xl font-bold">{{ user.username }}</h2>
-                        <p class="text-blue-100 text-lg">{{ user.email }}</p>
-                        <p class="text-blue-200 text-sm mt-1">Membro desde {{ profile.created_at|date:"d/m/Y" }}</p>
+                        <h2 class="text-xl font-semibold text-white">{{ user.username }}</h2>
+                        <p class="text-[#71717A] text-sm">{{ user.email }}</p>
+                        <p class="text-[#52525B] text-xs mt-1">Membro desde {{ profile.created_at|date:"d/m/Y" }}</p>
                     </div>
                 </div>
             </div>
 
-            <div class="p-8">
-                <h3 class="text-2xl font-bold text-gray-900 mb-6">Editar Perfil</h3>
+            <div class="p-6">
+                <h3 class="text-base font-semibold text-white mb-4">Editar Perfil</h3>
 
-                <form method="post" enctype="multipart/form-data" class="space-y-6">
+                <form method="post" enctype="multipart/form-data" class="space-y-4">
                     {% csrf_token %}
 
-                    <div class="space-y-2">
-                        <label class="block text-gray-700 font-semibold text-lg">
-                            📸 Avatar
-                        </label>
-                        <div class="flex items-center space-x-4">
-                            <input
-                                type="file"
-                                name="avatar"
-                                accept="image/*"
-                                class="block w-full text-gray-700 border-2 border-blue-600 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                        </div>
-                        <p class="text-gray-500 text-sm">Envie uma imagem para seu perfil (PNG, JPG)</p>
+                    <div>
+                        <label class="block text-sm font-medium text-[#A1A1AA] mb-2">Avatar</label>
+                        <input
+                            type="file"
+                            name="avatar"
+                            accept="image/*"
+                            class="block w-full text-sm text-[#A1A1AA] bg-[#0A0A0A] border border-[#27272A] rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#6366F1] transition-all file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-[#1A1A1A] file:text-[#A1A1AA] hover:file:bg-[#242424]"
+                        >
+                        <p class="text-[#52525B] text-xs mt-1">PNG ou JPG - máx 5MB</p>
                     </div>
 
-                    <div class="space-y-2">
-                        <label class="block text-gray-700 font-semibold text-lg">
-                            ✍️ Bio
-                        </label>
+                    <div>
+                        <label class="block text-sm font-medium text-[#A1A1AA] mb-2">Bio</label>
                         <textarea
                             name="bio"
                             rows="4"
-                            placeholder="Conte algo sobre você e suas aventuras..."
-                            class="w-full border-2 border-blue-600 rounded-2xl px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            placeholder="Conte algo sobre você..."
+                            class="w-full bg-[#0A0A0A] border border-[#27272A] rounded-lg px-3 py-2 text-sm text-white placeholder-[#52525B] focus:outline-none focus:ring-1 focus:ring-[#6366F1] resize-none transition-all"
                         >{{ profile.bio }}</textarea>
-                        <p class="text-gray-500 text-sm">Máximo 500 caracteres</p>
+                        <p class="text-[#52525B] text-xs mt-1">Máximo 500 caracteres</p>
                     </div>
 
-                    <div class="pt-4">
-                        <button
-                            type="submit"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-full transition-colors text-lg shadow-lg"
-                        >
-                            💾 Salvar Alterações
-                        </button>
-                    </div>
+                    <button
+                        type="submit"
+                        class="w-full bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                    >
+                        Salvar Alterações
+                    </button>
                 </form>
             </div>
 
-            <div class="bg-gray-50 px-8 py-6 border-t border-gray-200">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-white rounded-xl p-4 text-center shadow">
-                        <div class="text-3xl mb-2">🎮</div>
-                        <div class="text-2xl font-bold text-gray-900">0</div>
-                        <div class="text-gray-600 text-sm">Aventuras</div>
+            <div class="p-6 border-t border-[#27272A]">
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-[#0A0A0A] rounded-lg p-4 text-center border border-[#27272A]">
+                        <div class="text-2xl mb-1">🎮</div>
+                        <div class="text-xl font-semibold text-white mb-1">0</div>
+                        <div class="text-[#71717A] text-xs">Aventuras</div>
                     </div>
-                    <div class="bg-white rounded-xl p-4 text-center shadow">
-                        <div class="text-3xl mb-2">⚔️</div>
-                        <div class="text-2xl font-bold text-gray-900">0</div>
-                        <div class="text-gray-600 text-sm">Personagens</div>
+                    <div class="bg-[#0A0A0A] rounded-lg p-4 text-center border border-[#27272A]">
+                        <div class="text-2xl mb-1">⚔️</div>
+                        <div class="text-xl font-semibold text-white mb-1">0</div>
+                        <div class="text-[#71717A] text-xs">Personagens</div>
                     </div>
-                    <div class="bg-white rounded-xl p-4 text-center shadow">
-                        <div class="text-3xl mb-2">🏆</div>
-                        <div class="text-2xl font-bold text-gray-900">0</div>
-                        <div class="text-gray-600 text-sm">Conquistas</div>
+                    <div class="bg-[#0A0A0A] rounded-lg p-4 text-center border border-[#27272A]">
+                        <div class="text-2xl mb-1">🏆</div>
+                        <div class="text-xl font-semibold text-white mb-1">0</div>
+                        <div class="text-[#71717A] text-xs">Conquistas</div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="mt-6 text-center">
-            <a href="/" class="text-blue-400 hover:text-blue-300 font-semibold">
-                ← Voltar para Home
+            <a href="{% url 'adventures:list' %}" class="text-[#6366F1] hover:text-[#5558E3] text-sm font-medium transition-colors">
+                ← Voltar para Aventuras
             </a>
         </div>
     </div>

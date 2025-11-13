@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Criar Personagem - AI RPG APP{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0A0A0A]">
+    <nav class="sticky top-0 z-50 bg-[#0F0F0F] border-b border-[#27272A] backdrop-blur-xl bg-opacity-90">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14">
+                <a href="{% url 'characters:list' %}" class="p-2 text-[#A1A1AA] hover:text-white hover:bg-[#1A1A1A] rounded-lg transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                <span class="text-sm font-medium text-white">Criar Personagem</span>
+                <div class="w-9"></div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-8 text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-[#1A1A1A] rounded-2xl border border-[#27272A] mb-4">
+                <span class="text-4xl">🎲</span>
+            </div>
+            <h1 class="text-2xl font-semibold text-white mb-2">Crie Seu Aventureiro</h1>
+            <p class="text-[#71717A]">Configure seu personagem para a jornada</p>
+        </div>
+
+        {% if form.errors %}
+            <div class="mb-6 bg-[#0F0F0F] border border-[#EF4444] text-[#EF4444] px-4 py-3 rounded-lg text-sm">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+                <h2 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                    <span>📝</span>
+                    <span>Informações Básicas</span>
+                </h2>
+
+                <div>
+                    <label class="block text-sm font-medium text-[#A1A1AA] mb-2">Nome do Aventureiro</label>
+                    {{ form.name }}
+                </div>
+            </div>
+
+            <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                        <span>🎲</span>
+                        <span>Atributos</span>
+                    </h2>
+                    <span class="text-xs text-[#71717A] bg-[#1A1A1A] px-3 py-1 rounded-full border border-[#27272A]">
+                        Rolados automaticamente
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-[#0A0A0A] rounded-lg p-4 border border-[#27272A] text-center">
+                        <div class="text-2xl mb-2">💪</div>
+                        <div class="text-xs text-[#71717A] mb-2">HABILIDADE</div>
+                        <div class="text-2xl font-bold text-white">1d6+6</div>
+                    </div>
+                    <div class="bg-[#0A0A0A] rounded-lg p-4 border border-[#27272A] text-center">
+                        <div class="text-2xl mb-2">❤️</div>
+                        <div class="text-xs text-[#71717A] mb-2">ENERGIA</div>
+                        <div class="text-2xl font-bold text-white">2d6+12</div>
+                    </div>
+                    <div class="bg-[#0A0A0A] rounded-lg p-4 border border-[#27272A] text-center">
+                        <div class="text-2xl mb-2">🍀</div>
+                        <div class="text-xs text-[#71717A] mb-2">SORTE</div>
+                        <div class="text-2xl font-bold text-white">1d6+6</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+                <h2 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                    <span>🛡️</span>
+                    <span>Equipamento Inicial</span>
+                </h2>
+
+                <div class="mb-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-sm text-[#A1A1AA]">Equipamento Base (sempre incluso):</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1.5 bg-[#1A1A1A] border border-[#27272A] text-[#A1A1AA] text-xs rounded-lg">⚔️ Espada</span>
+                        <span class="px-3 py-1.5 bg-[#1A1A1A] border border-[#27272A] text-[#A1A1AA] text-xs rounded-lg">🎒 Mochila</span>
+                        <span class="px-3 py-1.5 bg-[#1A1A1A] border border-[#27272A] text-[#A1A1AA] text-xs rounded-lg">🔦 Lanterna</span>
+                        <span class="px-3 py-1.5 bg-[#1A1A1A] border border-[#27272A] text-[#A1A1AA] text-xs rounded-lg">🍞 10 Provisões</span>
+                        <span class="px-3 py-1.5 bg-[#1A1A1A] border border-[#27272A] text-[#A1A1AA] text-xs rounded-lg">💰 10 Ouro</span>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-white mb-3">Escolha sua Proteção</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {% for value, label in form.protection.field.choices %}
+                            <label class="relative flex items-start p-4 bg-[#0A0A0A] border-2 border-[#27272A] rounded-lg cursor-pointer hover:border-[#3F3F46] transition-all">
+                                <input type="radio" name="protection" value="{{ value }}" class="sr-only peer" {% if forloop.first %}checked{% endif %}>
+                                <div class="flex-1">
+                                    <div class="text-sm font-medium text-white">{{ label }}</div>
+                                </div>
+                                <div class="ml-3 flex h-5 items-center">
+                                    <div class="w-4 h-4 rounded-full border-2 border-[#3F3F46] peer-checked:border-[#6366F1] peer-checked:bg-[#6366F1]"></div>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-white mb-3">Escolha 2 Poções</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-[#71717A] mb-2">Primeira Poção</label>
+                                {{ form.potion1 }}
+                            </div>
+                            <div>
+                                <label class="block text-xs text-[#71717A] mb-2">Segunda Poção</label>
+                                {{ form.potion2 }}
+                            </div>
+                        </div>
+                        <p class="text-xs text-[#52525B] mt-2">Você pode usar poções durante a aventura para recuperar atributos</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+                <h2 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                    <span>📖</span>
+                    <span>História (Opcional)</span>
+                </h2>
+                {{ form.notes }}
+            </div>
+
+            <div class="flex gap-3">
+                <a href="{% url 'characters:list' %}" class="flex-1 text-center px-6 py-3 bg-[#1A1A1A] hover:bg-[#242424] border border-[#27272A] text-white text-sm font-semibold rounded-lg transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit" class="flex-1 px-6 py-3 bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold rounded-lg transition-colors">
+                    Criar Personagem
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

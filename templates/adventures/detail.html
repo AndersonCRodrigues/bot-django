@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ adventure.title }} - AI RPG APP{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0A0A0A]">
+    <nav class="sticky top-0 z-50 bg-[#0F0F0F] border-b border-[#27272A] backdrop-blur-xl bg-opacity-90">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14">
+                <a href="{% url 'adventures:list' %}" class="p-2 text-[#A1A1AA] hover:text-white hover:bg-[#1A1A1A] rounded-lg transition-all duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                <span class="text-sm font-medium text-white">Detalhes</span>
+                <div class="w-9"></div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
+        <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-start justify-between gap-6 mb-6">
+                    <div class="flex-1">
+                        <div class="inline-flex items-center px-2 py-1 bg-[#1A1A1A] border border-[#27272A] rounded text-[#A1A1AA] text-xs font-medium mb-3">
+                            Aventura 1
+                        </div>
+                        <h1 class="text-2xl font-semibold text-white mb-4">{{ adventure.title }}</h1>
+                        <div class="flex gap-2">
+                            <span class="px-3 py-1 bg-[#1A1A1A] border border-[#27272A] text-[#A1A1AA] text-xs rounded font-medium">
+                                {{ adventure.get_genre_display }}
+                            </span>
+                            <span class="px-3 py-1 bg-[#1A1A1A] border border-[#27272A] text-[#A1A1AA] text-xs rounded font-medium">
+                                {{ adventure.get_difficulty_display }}
+                            </span>
+                        </div>
+                    </div>
+                    {% if adventure.cover_image %}
+                        <img src="{{ adventure.cover_image.url }}" alt="{{ adventure.title }}" class="w-20 h-20 rounded-lg object-cover border border-[#27272A]">
+                    {% else %}
+                        <div class="w-20 h-20 bg-[#1A1A1A] rounded-lg flex items-center justify-center border border-[#27272A]">
+                            <span class="text-3xl opacity-40">🎲</span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A]">
+                        <div class="text-[#71717A] text-xs mb-1">Nome</div>
+                        <div class="text-white text-sm font-medium">{{ adventure.title }}</div>
+                    </div>
+
+                    <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A]">
+                        <div class="text-[#71717A] text-xs mb-1">Último Acesso</div>
+                        <div class="text-white text-sm font-medium">{% now "d/m/Y" %}</div>
+                    </div>
+
+                    <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A]">
+                        <div class="text-[#71717A] text-xs mb-1">Personagens</div>
+                        <div class="text-white text-sm font-medium">Você e IA</div>
+                    </div>
+
+                    <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A]">
+                        <div class="text-[#71717A] text-xs mb-1">Duração</div>
+                        <div class="text-white text-sm font-medium">{{ adventure.estimated_duration }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+            <h2 class="text-base font-semibold text-white mb-3">Sobre a Aventura</h2>
+            <p class="text-[#A1A1AA] text-sm leading-relaxed">{{ adventure.description }}</p>
+        </div>
+
+        {% if user_session %}
+            <a href="{% url 'game:play' user_session.id %}" class="block w-full text-center px-6 py-3 bg-[#22C55E] hover:bg-[#16A34A] text-white text-sm font-semibold rounded-lg transition-colors">
+                Continuar Sessão
+            </a>
+        {% else %}
+            <a href="{% url 'adventures:start' adventure.pk %}" class="block w-full text-center px-6 py-3 bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold rounded-lg transition-colors">
+                Iniciar Aventura
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

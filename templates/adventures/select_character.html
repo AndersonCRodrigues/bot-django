@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Selecionar Personagem - AI RPG APP{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0A0A0A]">
+    <nav class="sticky top-0 z-50 bg-[#0F0F0F] border-b border-[#27272A] backdrop-blur-xl bg-opacity-90">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14">
+                <a href="{% url 'adventures:detail' adventure.pk %}" class="p-2 text-[#A1A1AA] hover:text-white hover:bg-[#1A1A1A] rounded-lg transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                <span class="text-sm font-medium text-white">Selecionar Personagem</span>
+                <div class="w-9"></div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-8 text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-[#1A1A1A] rounded-2xl border border-[#27272A] mb-4">
+                <span class="text-4xl">⚔️</span>
+            </div>
+            <h1 class="text-2xl font-semibold text-white mb-2">Escolha Seu Aventureiro</h1>
+            <p class="text-[#71717A]">Para a aventura: <span class="text-white font-medium">{{ adventure.title }}</span></p>
+        </div>
+
+        {% if characters %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                {% for character in characters %}
+                <form method="post" action="{% url 'adventures:start_with_character' adventure.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="character_id" value="{{ character._id }}">
+                    <button type="submit" class="w-full text-left group bg-[#0F0F0F] rounded-xl border border-[#27272A] hover:border-[#6366F1] transition-all duration-200 p-5">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold text-white mb-1 group-hover:text-[#6366F1] transition-colors">{{ character.name }}</h3>
+                                <p class="text-[#71717A] text-xs">Criado em {{ character.created_at|date:"d/m/Y" }}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-[#1A1A1A] rounded-lg flex items-center justify-center border border-[#27272A]">
+                                <span class="text-2xl">⚔️</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
+                                <div class="text-xs text-[#71717A] mb-1">HABILIDADE</div>
+                                <div class="text-lg font-bold text-white">{{ character.skill }}</div>
+                            </div>
+                            <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
+                                <div class="text-xs text-[#71717A] mb-1">ENERGIA</div>
+                                <div class="text-lg font-bold text-white">{{ character.stamina }}</div>
+                            </div>
+                            <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
+                                <div class="text-xs text-[#71717A] mb-1">SORTE</div>
+                                <div class="text-lg font-bold text-white">{{ character.luck }}</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2 text-xs text-[#A1A1AA]">
+                                <span>💰 {{ character.gold }}</span>
+                                <span>🍞 {{ character.provisions }}</span>
+                            </div>
+                            <span class="text-xs text-[#6366F1] group-hover:underline">Selecionar →</span>
+                        </div>
+                    </button>
+                </form>
+                {% endfor %}
+            </div>
+
+            <div class="text-center">
+                <a href="{% url 'characters:create' %}?next={% url 'adventures:select_character' adventure.pk %}" class="inline-flex items-center px-6 py-3 bg-[#1A1A1A] hover:bg-[#242424] border border-[#27272A] text-white text-sm font-semibold rounded-lg transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Criar Novo Personagem
+                </a>
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-[#1A1A1A] rounded-2xl border border-[#27272A] mb-6">
+                    <span class="text-5xl">⚔️</span>
+                </div>
+                <h2 class="text-xl font-semibold text-white mb-2">Nenhum Personagem Criado</h2>
+                <p class="text-[#71717A] mb-6">Você precisa criar um personagem antes de começar a aventura</p>
+                <a href="{% url 'characters:create' %}?next={% url 'adventures:select_character' adventure.pk %}" class="inline-flex items-center px-6 py-3 bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold rounded-lg transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Criar Primeiro Personagem
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

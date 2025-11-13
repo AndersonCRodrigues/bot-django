@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Deletar {{ character.name }} - AI RPG APP{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
+    <div class="w-full max-w-md">
+        <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-8 text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-[#1A1A1A] rounded-2xl border-2 border-[#EF4444] mb-6">
+                <svg class="w-8 h-8 text-[#EF4444]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+
+            <h2 class="text-xl font-bold text-white mb-2">Deletar Personagem</h2>
+            <p class="text-[#A1A1AA] mb-6">
+                Tem certeza que deseja deletar <span class="text-white font-semibold">{{ character.name }}</span>?<br>
+                Esta ação não pode ser desfeita.
+            </p>
+
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                <button type="submit" class="w-full px-6 py-3 bg-[#EF4444] hover:bg-[#DC2626] text-white text-sm font-semibold rounded-lg transition-colors">
+                    Sim, Deletar Personagem
+                </button>
+                <a href="{% url 'characters:detail' character._id %}" class="block w-full px-6 py-3 bg-[#1A1A1A] hover:bg-[#242424] border border-[#27272A] text-white text-sm font-semibold rounded-lg transition-colors">
+                    Cancelar
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

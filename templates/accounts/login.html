@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Login - AI RPG APP{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4 bg-gray-900">
+    <div class="w-full max-w-md">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-12">
+            <div class="text-center mb-8">
+                <div class="flex justify-center mb-6">
+                    <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center">
+                        <span class="text-4xl">🎮</span>
+                    </div>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">AI RPG APP</h1>
+            </div>
+
+            <div class="mb-8">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
+                    Hey,<br>
+                    Bem-Vindo<br>
+                    De Volta!
+                </h2>
+            </div>
+
+            {% if form.non_field_errors %}
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-6">
+                    <span>{{ form.non_field_errors.0 }}</span>
+                </div>
+            {% endif %}
+
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <span class="text-gray-500 text-xl">👤</span>
+                    </div>
+                    <input
+                        type="text"
+                        name="username"
+                        placeholder="Usuário"
+                        value="{{ form.username.value|default:'' }}"
+                        class="w-full pl-12 pr-4 py-4 bg-white border-2 border-blue-600 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    >
+                </div>
+
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <span class="text-gray-500 text-xl">🔒</span>
+                    </div>
+                    <input
+                        type="password"
+                        name="password"
+                        placeholder="Senha"
+                        class="w-full pl-12 pr-4 py-4 bg-white border-2 border-blue-600 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    >
+                </div>
+
+                <div class="text-right">
+                    <a href="#" class="text-blue-600 text-sm font-semibold hover:text-blue-700">
+                        Forgot password?
+                    </a>
+                </div>
+
+                <button
+                    type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-full transition-colors text-lg"
+                >
+                    Login
+                </button>
+            </form>
+
+            <div class="mt-8 text-center">
+                <p class="text-gray-600">
+                    Não tem conta?
+                    <a href="{% url 'accounts:register' %}" class="text-blue-600 font-semibold hover:text-blue-700">
+                        Criar Conta
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

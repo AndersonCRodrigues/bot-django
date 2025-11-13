@@ -13,12 +13,11 @@ urlpatterns = [
             else redirect("accounts:login")
         ),
     ),
-    path("admin/", admin.site.urls),
+    path("admin/game/", include("apps.game.admin.urls")),
     path("", include("apps.accounts.urls")),
-    path("accounts/", include("apps.accounts.urls")),
     path("adventures/", include("apps.adventures.urls")),
     path("characters/", include("apps.characters.urls")),
-    path("admin/game/", include("apps.game.admin.urls")),
+    path("admin/", admin.site.urls),
 ]
 
 if settings.DEBUG:

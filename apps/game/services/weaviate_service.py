@@ -3,53 +3,54 @@ from typing import Dict, Optional
 from langchain_weaviate import WeaviateVectorStore
 from django.conf import settings
 import weaviate
+from weaviate.connect import ConnectionParams, ProtocolParams
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 logger = logging.getLogger("game.weaviate")
 
-_weaviate_client = None
+_weaviate_client: Optional[weaviate.WeaviateClient] = None
 _vector_store_cache: Dict[str, WeaviateVectorStore] = {}
 
 
+def _get_connection_params() -> ConnectionParams:
+    host = getattr(settings, "WEAVIATE_HOST", "localhost")
+    http_port = getattr(settings, "WEAVIATE_PORT", 8080)
+    grpc_port = getattr(settings, "WEAVIATE_GRPC_PORT", 50051)
+    secure = getattr(settings, "WEAVIATE_SECURE", False)
+
+    http_params = ProtocolParams(host=host, port=http_port, secure=secure)
+    grpc_params = ProtocolParams(host=host, port=grpc_port, secure=secure)
+
+    return ConnectionParams(http=http_params, grpc=grpc_params)
+
+
 def get_weaviate_client():
-    """Retorna cliente Weaviate singleton."""
     global _weaviate_client
 
     if _weaviate_client is None:
         try:
-            _weaviate_client = weaviate.Client(
-                url=settings.WEAVIATE_URL,
-                timeout_config=(5, 15),
+            connection_params = _get_connection_params()
+            _weaviate_client = weaviate.WeaviateClient(
+                connection_params=connection_params
             )
-            logger.info("Weaviate client conectado")
+            _weaviate_client.connect()
         except Exception as e:
-            logger.error(f"Erro ao conectar Weaviate: {e}")
+            logger.error(f"Erro ao conectar Weaviate (API v4): {e}")
             raise
 
     return _weaviate_client
 
 
 def get_embedding_model():
-    """Retorna modelo de embeddings do Google."""
-    from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
     return GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001", google_api_key=settings.GEMINI_API_KEY
+        model="models/embedding-001",
+        google_api_key=settings.GEMINI_API_KEY,
     )
 
 
 def create_vector_store(class_name: str) -> Optional[WeaviateVectorStore]:
-    """
-    Cria ou retorna vector store existente para uma classe.
-
-    Args:
-        class_name: Nome da classe no Weaviate (ex: "Ovilarejoamaldicoado")
-
-    Returns:
-        WeaviateVectorStore ou None em caso de erro
-    """
     try:
         if class_name in _vector_store_cache:
-            logger.debug(f"Vector store em cache: {class_name}")
             return _vector_store_cache[class_name]
 
         client = get_weaviate_client()
@@ -63,8 +64,6 @@ def create_vector_store(class_name: str) -> Optional[WeaviateVectorStore]:
         )
 
         _vector_store_cache[class_name] = vector_store
-        logger.info(f"Vector store criado: {class_name}")
-
         return vector_store
 
     except Exception as e:
@@ -72,24 +71,30 @@ def create_vector_store(class_name: str) -> Optional[WeaviateVectorStore]:
         return None
 
 
-def delete_vector_store(class_name: str) -> bool:
-    """
-    Deleta uma classe do Weaviate.
-
-    Args:
-        class_name: Nome da classe a deletar
-
-    Returns:
-        True se sucesso, False se erro
-    """
+def create_as_retriever(class_name: str):
     try:
-        client = get_weaviate_client()
-        client.schema.delete_class(class_name)
+        vector_store = create_vector_store(class_name)
+        if vector_store is None:
+            return None
+
+        return vector_store.as_retriever(
+            search_type="mmr",
+            search_kwargs={"k": 3, "fetch_k": 10, "lambda_mult": 0.5},
+        )
+
+    except Exception as e:
+        logger.error(f"Erro ao criar retriever para {class_name}: {str(e)}")
+        return None
+
+
+def delete_vector_store(class_name: str) -> bool:
+    try:
+        client: weaviate.WeaviateClient = get_weaviate_client()
+        client.collections.delete(collection_name=class_name)
 
         if class_name in _vector_store_cache:
             del _vector_store_cache[class_name]
 
-        logger.info(f"Vector store deletado: {class_name}")
         return True
 
     except Exception as e:
@@ -98,24 +103,21 @@ def delete_vector_store(class_name: str) -> bool:
 
 
 def check_weaviate_health() -> Dict:
-    """
-    Verifica saúde do Weaviate.
-
-    Returns:
-        dict: {
-            'status': 'healthy' | 'unhealthy',
-            'classes': int,
-            'error': str (opcional)
-        }
-    """
     try:
-        client = get_weaviate_client()
-        schema = client.schema.get()
+        client: weaviate.WeaviateClient = get_weaviate_client()
+
+        if not client.is_ready():
+            return {
+                "status": "unhealthy",
+                "error": "Client reports service is not ready",
+            }
+
+        collections = client.collections.list_all()
 
         return {
             "status": "healthy",
-            "classes": len(schema.get("classes", [])),
-            "classes_list": [c["class"] for c in schema.get("classes", [])],
+            "classes": len(collections),
+            "classes_list": collections,
         }
 
     except Exception as e:
@@ -124,7 +126,6 @@ def check_weaviate_health() -> Dict:
 
 
 def clear_cache():
-    """Limpa cache de vector stores."""
     global _vector_store_cache
     _vector_store_cache.clear()
     logger.info("Cache de vector stores limpo")

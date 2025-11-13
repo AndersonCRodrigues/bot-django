@@ -6,8 +6,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from langchain_community.document_loaders import PyMuPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 from django.utils import timezone
 
 from apps.game.models import ProcessedBook

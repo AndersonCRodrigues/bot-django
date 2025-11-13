@@ -181,7 +181,10 @@ LOGIN_REDIRECT_URL = "adventures:list"
 LOGOUT_REDIRECT_URL = "accounts:login"
 
 # Weaviate Configuration
-WEAVIATE_URL = config("WEAVIATE_URL", default="http://localhost:8080")
+WEAVIATE_HOST = config("WEAVIATE_HOST", default="localhost")
+WEAVIATE_PORT = config("WEAVIATE_PORT", default=8080, cast=int)
+WEAVIATE_GRPC_PORT = config("WEAVIATE_GRPC_PORT", default=50051, cast=int)
+WEAVIATE_SECURE = config("WEAVIATE_SECURE", default=False, cast=bool)
 WEAVIATE_API_KEY = config("WEAVIATE_API_KEY", default=None)
 
 # Google AI Configuration

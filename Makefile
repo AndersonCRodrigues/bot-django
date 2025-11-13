@@ -167,16 +167,16 @@ redis:
 weaviate:
 	@echo "$(YELLOW)Iniciando Weaviate...$(NC)"
 	@docker run -d \
-		--name rpg-weaviate \
-		-p 8080:8080 \
-		-p 50051:50051 \
-		-e QUERY_DEFAULTS_LIMIT=20 \
-		-e AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true \
-		-e PERSISTENCE_DATA_PATH=/var/lib/weaviate \
-		-e DEFAULT_VECTORIZER_MODULE=text2vec-transformers \
-		-e ENABLE_MODULES=text2vec-transformers \
-		-v weaviate_data:/var/lib/weaviate \
-		semitechnologies/weaviate:latest
+	--name rpg-weaviate \
+  -p 8080:8080 \
+  -p 50051:50051 \
+  -e QUERY_DEFAULTS_LIMIT=20 \
+  -e AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true \
+  -e PERSISTENCE_DATA_PATH=/var/lib/weaviate \
+  -e ENABLE_GRPC=true \
+  -e WEAVIATE_DEFAULT_VECTORIZER=text2vec-transformers \
+  -e WEAVIATE_ENABLE_MODULES=text2vec-transformers \
+  semitechnologies/weaviate:latest
 	@echo "$(GREEN)✓ Weaviate rodando em localhost:8080$(NC)"
 
 .PHONY: dbs

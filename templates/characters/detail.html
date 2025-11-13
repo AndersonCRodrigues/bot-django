@@ -14,7 +14,7 @@
                     </svg>
                 </a>
                 <span class="text-sm font-medium text-white">Ficha do Personagem</span>
-                <a href="{% url 'characters:delete' character._id %}" class="p-2 text-[#EF4444] hover:bg-[#1A1A1A] rounded-lg transition-all">
+                <a href="{% url 'characters:delete' character.id %}" class="p-2 text-[#EF4444] hover:bg-[#1A1A1A] rounded-lg transition-all">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
@@ -30,6 +30,12 @@
                     <div class="flex-1">
                         <h1 class="text-2xl font-bold text-white mb-2">{{ character.name }}</h1>
                         <p class="text-[#71717A] text-sm">Criado em {{ character.created_at|date:"d/m/Y H:i" }}</p>
+
+                        {% if character.adventure_id %}
+                        <div class="mt-3 inline-flex items-center px-3 py-1.5 bg-[#1A1A1A] border border-[#27272A] rounded-lg">
+                            <span class="text-[#6366F1] text-sm font-medium">📖 {{ adventure_name|default:"Aventura Desconhecida" }}</span>
+                        </div>
+                        {% endif %}
                     </div>
                     <div class="w-16 h-16 bg-[#1A1A1A] rounded-xl flex items-center justify-center border border-[#27272A]">
                         <span class="text-4xl">⚔️</span>
@@ -146,6 +152,12 @@
             </div>
             {% endif %}
         </div>
+
+        {% if character.adventure_id %}
+        <a href="{% url 'adventures:start_with_character' character.adventure_id %}?character_id={{ character.id }}" class="block w-full text-center px-6 py-3 bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold rounded-lg transition-colors">
+            🎮 Jogar: {{ adventure_name|default:"Esta Aventura" }}
+        </a>
+        {% endif %}
 
         <div class="text-center">
             <a href="{% url 'characters:list' %}" class="text-[#6366F1] hover:text-[#5558E3] text-sm font-medium transition-colors">

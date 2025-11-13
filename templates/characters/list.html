@@ -35,12 +35,18 @@
         {% if characters %}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {% for character in characters %}
-                <a href="{% url 'characters:detail' character._id %}" class="group block bg-[#0F0F0F] rounded-xl border border-[#27272A] hover:border-[#3F3F46] transition-all duration-200 overflow-hidden">
+                <a href="{% url 'characters:detail' character.id %}" class="group block bg-[#0F0F0F] rounded-xl border border-[#27272A] hover:border-[#3F3F46] transition-all duration-200 overflow-hidden">
                     <div class="p-5">
                         <div class="flex items-start justify-between mb-4">
                             <div class="flex-1">
                                 <h3 class="text-lg font-semibold text-white mb-1 group-hover:text-[#6366F1] transition-colors">{{ character.name }}</h3>
                                 <p class="text-[#71717A] text-xs">Criado em {{ character.created_at|date:"d/m/Y" }}</p>
+
+                                {% if character.adventure_id %}
+                                <div class="mt-2 inline-flex items-center px-2 py-1 bg-[#1A1A1A] border border-[#27272A] rounded">
+                                    <span class="text-[#6366F1] text-xs">📖 {{ character.adventure_name|default:"Aventura Desconhecida" }}</span>
+                                </div>
+                                {% endif %}
                             </div>
                             <div class="w-12 h-12 bg-[#1A1A1A] rounded-lg flex items-center justify-center border border-[#27272A]">
                                 <span class="text-2xl">⚔️</span>

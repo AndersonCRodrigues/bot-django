@@ -2,12 +2,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Adventure
-from apps.game.models import GameSession
 from apps.characters.models import Character
 
 
 def adventure_list(request):
-    adventures = Adventure.objects.filter(is_active=True).order_by("-created_at")
+    adventures = Adventure.objects.filter(is_published=True).order_by("-created_at")
 
     context = {
         "adventures": adventures,
@@ -17,13 +16,10 @@ def adventure_list(request):
 
 
 def adventure_detail(request, pk):
-    adventure = get_object_or_404(Adventure, pk=pk, is_active=True)
+    adventure = get_object_or_404(Adventure, pk=pk, is_published=True)
 
+    # TODO: Implementar verificação de sessão ativa quando criar o app game
     user_session = None
-    if request.user.is_authenticated:
-        user_session = GameSession.objects.filter(
-            user=request.user, adventure=adventure, status="active"
-        ).first()
 
     context = {
         "adventure": adventure,
@@ -36,15 +32,17 @@ def adventure_detail(request, pk):
 @login_required
 def adventure_start(request, pk):
     """Redireciona para seleção de personagem"""
-    adventure = get_object_or_404(Adventure, pk=pk, is_active=True)
+    adventure = get_object_or_404(Adventure, pk=pk, is_published=True)
     return redirect("adventures:select_character", pk=pk)
 
 
 @login_required
 def select_character(request, pk):
-    """Tela de seleção de personagem"""
-    adventure = get_object_or_404(Adventure, pk=pk, is_active=True)
-    characters = Character.find_by_user(request.user.id)
+    """Tela de seleção de personagem - APENAS da aventura específica"""
+    adventure = get_object_or_404(Adventure, pk=pk, is_published=True)
+
+    # Buscar APENAS personagens criados para ESTA aventura
+    characters = Character.find_by_user_and_adventure(request.user.id, pk)
 
     context = {
         "adventure": adventure,
@@ -57,11 +55,13 @@ def select_character(request, pk):
 @login_required
 def start_with_character(request, pk):
     """Inicia sessão com personagem selecionado"""
-    if request.method != "POST":
-        return redirect("adventures:select_character", pk=pk)
+    adventure = get_object_or_404(Adventure, pk=pk, is_published=True)
 
-    adventure = get_object_or_404(Adventure, pk=pk, is_active=True)
-    character_id = request.POST.get("character_id")
+    # Aceitar character_id via POST ou GET
+    if request.method == "POST":
+        character_id = request.POST.get("character_id")
+    else:
+        character_id = request.GET.get("character_id")
 
     if not character_id:
         messages.error(request, "Selecione um personagem.")
@@ -73,22 +73,14 @@ def start_with_character(request, pk):
         messages.error(request, "Personagem não encontrado.")
         return redirect("adventures:select_character", pk=pk)
 
-    # Verificar se já tem sessão ativa
-    active_session = GameSession.objects.filter(
-        user=request.user, adventure=adventure, status="active"
-    ).first()
+    # Verificar se personagem pertence a esta aventura
+    if character.adventure_id != pk:
+        messages.error(request, f"{character.name} não foi criado para esta aventura.")
+        return redirect("adventures:select_character", pk=pk)
 
-    if active_session:
-        return redirect("game:play", session_id=active_session.id)
+    # TODO: Criar sessão de jogo quando implementar o app game
+    messages.success(request, f"Pronto para começar a aventura com {character.name}!")
 
-    # Criar nova sessão
-    session = GameSession.objects.create(
-        user=request.user,
-        adventure=adventure,
-        character_id=str(character._id),
-        character_name=character.name,
-        status="active",
-    )
-
-    messages.success(request, f"Aventura iniciada com {character.name}!")
-    return redirect("game:play", session_id=session.id)
+    # Por enquanto, redireciona de volta para aventuras
+    # Quando criar o app game, vai redirecionar para: redirect('game:play', session_id=session.id)
+    return redirect("adventures:list")

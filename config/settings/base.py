@@ -81,11 +81,11 @@ DATABASES = {
 
 # MongoDB via Motor (async)
 MONGODB_URI = config("MONGODB_URI", default="mongodb://localhost:27017/")
-MONGODB_NAME = config("MONGODB_NAME", default="rpg_database")
+MONGODB_DB_NAME = config("MONGODBMONGODB_DB_NAME_NAME", default="rpg_database")
 
 # Cliente MongoDB global
 MONGODB_CLIENT = AsyncIOMotorClient(MONGODB_URI)
-MONGODB_DATABASE = MONGODB_CLIENT[MONGODB_NAME]
+MONGODB_DATABASE = MONGODB_CLIENT[MONGODB_DB_NAME]
 
 # Cache - Redis
 CACHES = {

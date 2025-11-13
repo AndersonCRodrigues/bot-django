@@ -31,44 +31,40 @@
         {% if characters %}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {% for character in characters %}
-                <form method="post" action="{% url 'adventures:start_with_character' adventure.pk %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="character_id" value="{{ character._id }}">
-                    <button type="submit" class="w-full text-left group bg-[#0F0F0F] rounded-xl border border-[#27272A] hover:border-[#6366F1] transition-all duration-200 p-5">
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="flex-1">
-                                <h3 class="text-lg font-semibold text-white mb-1 group-hover:text-[#6366F1] transition-colors">{{ character.name }}</h3>
-                                <p class="text-[#71717A] text-xs">Criado em {{ character.created_at|date:"d/m/Y" }}</p>
-                            </div>
-                            <div class="w-12 h-12 bg-[#1A1A1A] rounded-lg flex items-center justify-center border border-[#27272A]">
-                                <span class="text-2xl">⚔️</span>
-                            </div>
+                <a href="{% url 'characters:detail' character.id %}?adventure={{ adventure.pk }}" class="block group bg-[#0F0F0F] rounded-xl border border-[#27272A] hover:border-[#6366F1] transition-all duration-200 p-5">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold text-white mb-1 group-hover:text-[#6366F1] transition-colors">{{ character.name }}</h3>
+                            <p class="text-[#71717A] text-xs">Criado em {{ character.created_at|date:"d/m/Y" }}</p>
                         </div>
+                        <div class="w-12 h-12 bg-[#1A1A1A] rounded-lg flex items-center justify-center border border-[#27272A]">
+                            <span class="text-2xl">⚔️</span>
+                        </div>
+                    </div>
 
-                        <div class="grid grid-cols-3 gap-3 mb-4">
-                            <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
-                                <div class="text-xs text-[#71717A] mb-1">HABILIDADE</div>
-                                <div class="text-lg font-bold text-white">{{ character.skill }}</div>
-                            </div>
-                            <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
-                                <div class="text-xs text-[#71717A] mb-1">ENERGIA</div>
-                                <div class="text-lg font-bold text-white">{{ character.stamina }}</div>
-                            </div>
-                            <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
-                                <div class="text-xs text-[#71717A] mb-1">SORTE</div>
-                                <div class="text-lg font-bold text-white">{{ character.luck }}</div>
-                            </div>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
+                            <div class="text-xs text-[#71717A] mb-1">HABILIDADE</div>
+                            <div class="text-lg font-bold text-white">{{ character.skill }}</div>
                         </div>
+                        <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
+                            <div class="text-xs text-[#71717A] mb-1">ENERGIA</div>
+                            <div class="text-lg font-bold text-white">{{ character.stamina }}</div>
+                        </div>
+                        <div class="bg-[#0A0A0A] rounded-lg p-3 border border-[#27272A] text-center">
+                            <div class="text-xs text-[#71717A] mb-1">SORTE</div>
+                            <div class="text-lg font-bold text-white">{{ character.luck }}</div>
+                        </div>
+                    </div>
 
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2 text-xs text-[#A1A1AA]">
-                                <span>💰 {{ character.gold }}</span>
-                                <span>🍞 {{ character.provisions }}</span>
-                            </div>
-                            <span class="text-xs text-[#6366F1] group-hover:underline">Selecionar →</span>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2 text-xs text-[#A1A1AA]">
+                            <span>💰 {{ character.gold }}</span>
+                            <span>🍞 {{ character.provisions }}</span>
                         </div>
-                    </button>
-                </form>
+                        <span class="text-xs text-[#6366F1] group-hover:underline">Ver Ficha →</span>
+                    </div>
+                </a>
                 {% endfor %}
             </div>
 

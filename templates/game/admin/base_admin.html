@@ -1,0 +1,120 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin Panel{% endblock %} - AI RPG APP</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="{% static 'css/admin/styles.css' %}">
+    <script src="{% static 'js/admin/utils.js' %}" defer></script>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-[#0A0A0A] text-white min-h-screen">
+    <div class="fixed inset-y-0 left-0 w-64 bg-[#0F0F0F] border-r border-[#27272A]" x-data="{ open: true }">
+        <div class="flex flex-col h-full">
+            <div class="p-6 border-b border-[#27272A]">
+                <a href="{% url 'game_admin:dashboard' %}" class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-[#6366F1] to-[#8B5CF6] rounded-lg flex items-center justify-center">
+                        <span class="text-xl">👑</span>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold">Admin Panel</h1>
+                        <p class="text-xs text-[#71717A]">AI RPG System</p>
+                    </div>
+                </a>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                <a href="{% url 'game_admin:dashboard' %}" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-[#1A1A1A] transition-colors {% if request.resolver_match.url_name == 'dashboard' %}bg-[#1A1A1A] text-[#6366F1]{% else %}text-[#A1A1AA]{% endif %}">
+                    <span class="text-xl">📊</span>
+                    <span class="font-medium">Dashboard</span>
+                </a>
+
+                <a href="{% url 'game_admin:upload_book' %}" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-[#1A1A1A] transition-colors {% if request.resolver_match.url_name == 'upload_book' %}bg-[#1A1A1A] text-[#6366F1]{% else %}text-[#A1A1AA]{% endif %}">
+                    <span class="text-xl">📤</span>
+                    <span class="font-medium">Upload Livro</span>
+                </a>
+
+                <a href="{% url 'game_admin:list_books' %}" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-[#1A1A1A] transition-colors {% if request.resolver_match.url_name == 'list_books' or request.resolver_match.url_name == 'book_detail' %}bg-[#1A1A1A] text-[#6366F1]{% else %}text-[#A1A1AA]{% endif %}">
+                    <span class="text-xl">📚</span>
+                    <span class="font-medium">Livros</span>
+                </a>
+
+                <a href="{% url 'game_admin:users_list' %}" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-[#1A1A1A] transition-colors {% if request.resolver_match.url_name == 'users_list' %}bg-[#1A1A1A] text-[#6366F1]{% else %}text-[#A1A1AA]{% endif %}">
+                    <span class="text-xl">👥</span>
+                    <span class="font-medium">Usuários</span>
+                </a>
+
+                <a href="{% url 'game_admin:api_logs' %}" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-[#1A1A1A] transition-colors {% if request.resolver_match.url_name == 'api_logs' %}bg-[#1A1A1A] text-[#6366F1]{% else %}text-[#A1A1AA]{% endif %}">
+                    <span class="text-xl">📝</span>
+                    <span class="font-medium">API Logs</span>
+                </a>
+
+                <a href="{% url 'game_admin:system_health' %}" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-[#1A1A1A] transition-colors {% if request.resolver_match.url_name == 'system_health' %}bg-[#1A1A1A] text-[#6366F1]{% else %}text-[#A1A1AA]{% endif %}">
+                    <span class="text-xl">🏥</span>
+                    <span class="font-medium">System Health</span>
+                </a>
+
+                <div class="border-t border-[#27272A] my-4"></div>
+
+                <a href="{% url 'adventures:list' %}" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-[#1A1A1A] transition-colors text-[#A1A1AA]">
+                    <span class="text-xl">🎮</span>
+                    <span class="font-medium">Ver Site</span>
+                </a>
+            </nav>
+
+            <div class="p-4 border-t border-[#27272A]">
+                <div class="flex items-center space-x-3 px-4 py-3 bg-[#1A1A1A] rounded-lg">
+                    <div class="w-10 h-10 bg-gradient-to-br from-[#F59E0B] to-[#EF4444] rounded-full flex items-center justify-center">
+                        <span class="text-lg">👤</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate">{{ request.user.username }}</p>
+                        <p class="text-xs text-[#71717A]">Superadmin</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ml-64">
+        <header class="sticky top-0 z-40 bg-[#0F0F0F] border-b border-[#27272A] backdrop-blur-xl bg-opacity-90">
+            <div class="px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-bold">{% block page_title %}Admin Panel{% endblock %}</h2>
+                        <p class="text-sm text-[#71717A]">{% block page_subtitle %}Gerenciamento do sistema{% endblock %}</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-sm text-[#71717A]" x-data="{ time: new Date().toLocaleTimeString('pt-BR') }" x-init="setInterval(() => time = new Date().toLocaleTimeString('pt-BR'), 1000)">
+                            <span x-text="time"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        {% if messages %}
+        <div class="px-8 py-4 space-y-2">
+            {% for message in messages %}
+            <div class="fade-in bg-{% if message.tags == 'success' %}[#16A34A]{% elif message.tags == 'error' %}[#DC2626]{% else %}[#2563EB]{% endif %} bg-opacity-10 border border-{% if message.tags == 'success' %}[#16A34A]{% elif message.tags == 'error' %}[#DC2626]{% else %}[#2563EB]{% endif %} text-{% if message.tags == 'success' %}[#16A34A]{% elif message.tags == 'error' %}[#DC2626]{% else %}[#2563EB]{% endif %} px-6 py-4 rounded-lg">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <main class="px-8 py-8">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

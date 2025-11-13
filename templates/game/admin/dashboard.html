@@ -1,0 +1,181 @@
+{% extends 'game/admin/base_admin.html' %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Visão geral do sistema{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    {% if alerts %}
+    <div class="space-y-3">
+        {% for alert in alerts %}
+        <div class="fade-in bg-{% if alert.type == 'danger' %}[#DC2626]{% else %}[#F59E0B]{% endif %} bg-opacity-10 border border-{% if alert.type == 'danger' %}[#DC2626]{% else %}[#F59E0B]{% endif %} text-{% if alert.type == 'danger' %}[#DC2626]{% else %}[#F59E0B]{% endif %} px-6 py-4 rounded-lg flex items-center space-x-3">
+            <span class="text-2xl">{% if alert.type == 'danger' %}🚨{% else %}⚠️{% endif %}</span>
+            <span class="font-medium">{{ alert.message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="flex items-center space-x-3">
+        <span class="text-sm text-[#71717A]">Período:</span>
+        <div class="flex space-x-2">
+            <a href="?days=7" class="px-4 py-2 {% if days == 7 %}bg-[#6366F1] text-white{% else %}bg-[#1A1A1A] text-[#A1A1AA] hover:bg-[#27272A]{% endif %} rounded-lg text-sm font-medium transition-colors">7 dias</a>
+            <a href="?days=30" class="px-4 py-2 {% if days == 30 %}bg-[#6366F1] text-white{% else %}bg-[#1A1A1A] text-[#A1A1AA] hover:bg-[#27272A]{% endif %} rounded-lg text-sm font-medium transition-colors">30 dias</a>
+            <a href="?days=90" class="px-4 py-2 {% if days == 90 %}bg-[#6366F1] text-white{% else %}bg-[#1A1A1A] text-[#A1A1AA] hover:bg-[#27272A]{% endif %} rounded-lg text-sm font-medium transition-colors">90 dias</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="fade-in bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6 hover:border-[#3F3F46] transition-all">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-[#6366F1] bg-opacity-10 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">👥</span>
+                </div>
+                <span class="text-xs text-[#16A34A] bg-[#16A34A] bg-opacity-10 px-2 py-1 rounded">+{{ new_users }}</span>
+            </div>
+            <h3 class="text-3xl font-bold mb-1">{{ total_users|default:0 }}</h3>
+            <p class="text-sm text-[#71717A]">Total de Usuários</p>
+        </div>
+
+        <div class="fade-in bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6 hover:border-[#3F3F46] transition-all">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-[#10B981] bg-opacity-10 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">🎮</span>
+                </div>
+                <div class="flex space-x-1">
+                    <span class="w-2 h-2 bg-[#10B981] rounded-full pulse-slow"></span>
+                    <span class="w-2 h-2 bg-[#10B981] rounded-full pulse-slow" style="animation-delay: 0.2s"></span>
+                    <span class="w-2 h-2 bg-[#10B981] rounded-full pulse-slow" style="animation-delay: 0.4s"></span>
+                </div>
+            </div>
+            <h3 class="text-3xl font-bold mb-1">{{ active_d30|default:0 }}</h3>
+            <p class="text-sm text-[#71717A]">Ativos (30d)</p>
+            <div class="mt-3 flex items-center space-x-3 text-xs text-[#A1A1AA]">
+                <span>D1: {{ active_d1 }}</span>
+                <span>D7: {{ active_d7 }}</span>
+            </div>
+        </div>
+
+        <div class="fade-in bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6 hover:border-[#3F3F46] transition-all">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-[#8B5CF6] bg-opacity-10 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">📡</span>
+                </div>
+                <span class="text-xs text-[#8B5CF6] bg-[#8B5CF6] bg-opacity-10 px-2 py-1 rounded">{{ success_rate }}%</span>
+            </div>
+            <h3 class="text-3xl font-bold mb-1">{{ total_calls|default:0 }}</h3>
+            <p class="text-sm text-[#71717A]">API Calls</p>
+        </div>
+
+        <div class="fade-in bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6 hover:border-[#3F3F46] transition-all">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-[#F59E0B] bg-opacity-10 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">💰</span>
+                </div>
+            </div>
+            <h3 class="text-3xl font-bold mb-1">${{ total_cost|floatformat:2 }}</h3>
+            <p class="text-sm text-[#71717A]">Custo Total ({{ days }}d)</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="fade-in bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+            <h3 class="text-lg font-semibold mb-6 flex items-center space-x-2">
+                <span>📈</span>
+                <span>Tokens por Dia</span>
+            </h3>
+            <canvas id="tokensChart" height="200"></canvas>
+        </div>
+
+        <div class="fade-in bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+            <h3 class="text-lg font-semibold mb-6 flex items-center space-x-2">
+                <span>💸</span>
+                <span>Custo por Dia</span>
+            </h3>
+            <canvas id="costChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="fade-in bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+            <h3 class="text-lg font-semibold mb-6 flex items-center space-x-2">
+                <span>🏆</span>
+                <span>Mais Jogadas</span>
+            </h3>
+            <div class="space-y-4">
+                {% for adventure in most_played %}
+                <div class="flex items-center justify-between p-4 bg-[#1A1A1A] rounded-lg hover:bg-[#27272A] transition-colors">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">{{ forloop.counter }}.</span>
+                        <div>
+                            <p class="font-medium">{{ adventure.title }}</p>
+                            <p class="text-xs text-[#71717A]">{{ adventure.play_count }} jogadas</p>
+                        </div>
+                    </div>
+                    <a href="{% url 'game_admin:book_detail' adventure.id %}" class="text-[#6366F1] hover:text-[#5558E3] text-sm">Ver →</a>
+                </div>
+                {% empty %}
+                <p class="text-[#71717A] text-center py-8">Nenhuma aventura jogada ainda</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="fade-in bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+            <h3 class="text-lg font-semibold mb-6 flex items-center space-x-2">
+                <span>🏥</span>
+                <span>System Health</span>
+            </h3>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-4 bg-[#1A1A1A] rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-3 h-3 rounded-full {% if weaviate_status.status == 'healthy' %}bg-[#10B981]{% else %}bg-[#DC2626]{% endif %}"></div>
+                        <div>
+                            <p class="font-medium">Weaviate</p>
+                            <p class="text-xs text-[#71717A]">{{ weaviate_status.classes|default:0 }} classes</p>
+                        </div>
+                    </div>
+                    <span class="text-sm {% if weaviate_status.status == 'healthy' %}text-[#10B981]{% else %}text-[#DC2626]{% endif %}">{{ weaviate_status.status }}</span>
+                </div>
+
+                <div class="flex items-center justify-between p-4 bg-[#1A1A1A] rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-3 h-3 rounded-full bg-[#10B981]"></div>
+                        <div>
+                            <p class="font-medium">Storage</p>
+                            <p class="text-xs text-[#71717A]">{{ total_storage_mb }} MB / {{ total_chunks }} chunks</p>
+                        </div>
+                    </div>
+                    <span class="text-sm text-[#10B981]">OK</span>
+                </div>
+
+                <div class="flex items-center justify-between p-4 bg-[#1A1A1A] rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-3 h-3 rounded-full {% if avg_response_time < 1000 %}bg-[#10B981]{% elif avg_response_time < 2000 %}bg-[#F59E0B]{% else %}bg-[#DC2626]{% endif %}"></div>
+                        <div>
+                            <p class="font-medium">Avg Response Time</p>
+                            <p class="text-xs text-[#71717A]">Últimas {{ total_calls }} chamadas</p>
+                        </div>
+                    </div>
+                    <span class="text-sm {% if avg_response_time < 1000 %}text-[#10B981]{% elif avg_response_time < 2000 %}text-[#F59E0B]{% else %}text-[#DC2626]{% endif %}">{{ avg_response_time }}ms</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/admin/charts.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const charts = new DashboardCharts();
+
+    const dailyTokensData = {{ daily_tokens|safe }};
+    charts.createTokensChart('tokensChart', dailyTokensData);
+
+    const dailyCostsData = {{ daily_costs|safe }};
+    charts.createCostChart('costChart', dailyCostsData);
+});
+</script>
+{% endblock %}

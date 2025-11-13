@@ -1,0 +1,154 @@
+{% extends 'game/admin/base_admin.html' %}
+
+{% block title %}Livros{% endblock %}
+{% block page_title %}Gerenciar Livros{% endblock %}
+{% block page_subtitle %}{{ page_obj.paginator.count }} livro{{ page_obj.paginator.count|pluralize }} registrado{{ page_obj.paginator.count|pluralize }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <a href="?status=all" class="px-4 py-2 {% if status_filter == 'all' %}bg-[#6366F1] text-white{% else %}bg-[#1A1A1A] text-[#A1A1AA] hover:bg-[#27272A]{% endif %} rounded-lg text-sm font-medium transition-colors">
+                Todos
+            </a>
+            <a href="?status=published" class="px-4 py-2 {% if status_filter == 'published' %}bg-[#6366F1] text-white{% else %}bg-[#1A1A1A] text-[#A1A1AA] hover:bg-[#27272A]{% endif %} rounded-lg text-sm font-medium transition-colors">
+                Publicados
+            </a>
+            <a href="?status=draft" class="px-4 py-2 {% if status_filter == 'draft' %}bg-[#6366F1] text-white{% else %}bg-[#1A1A1A] text-[#A1A1AA] hover:bg-[#27272A]{% endif %} rounded-lg text-sm font-medium transition-colors">
+                Rascunhos
+            </a>
+        </div>
+
+        <form method="get" class="flex items-center space-x-3">
+            <input type="search" name="q" value="{{ search }}" placeholder="Buscar livros..." class="px-4 py-2 bg-[#1A1A1A] border border-[#27272A] rounded-lg text-white placeholder-[#71717A] focus:outline-none focus:border-[#6366F1] transition-colors">
+            <button type="submit" class="px-4 py-2 bg-[#6366F1] hover:bg-[#5558E3] text-white rounded-lg transition-colors">
+                Buscar
+            </button>
+        </form>
+    </div>
+
+    <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-[#0A0A0A] border-b border-[#27272A]">
+                <tr>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-[#71717A] uppercase tracking-wider">Livro</th>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-[#71717A] uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-[#71717A] uppercase tracking-wider">Estatísticas</th>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-[#71717A] uppercase tracking-wider">Processamento</th>
+                    <th class="px-6 py-4 text-right text-xs font-semibold text-[#71717A] uppercase tracking-wider">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#27272A]">
+                {% for book in page_obj %}
+                <tr class="hover:bg-[#1A1A1A] transition-colors">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center space-x-4">
+                            {% if book.cover_image %}
+                            <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="w-12 h-16 object-cover rounded">
+                            {% else %}
+                            <div class="w-12 h-16 bg-[#1A1A1A] rounded flex items-center justify-center">
+                                <span class="text-2xl">📚</span>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <p class="font-medium text-white">{{ book.title }}</p>
+                                <p class="text-sm text-[#71717A]">{{ book.genre }} • {{ book.difficulty }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if book.is_published %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#10B981] bg-opacity-10 text-[#10B981]">
+                            Publicado
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#71717A] bg-opacity-10 text-[#71717A]">
+                            Rascunho
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="space-y-1 text-sm">
+                            <div class="flex items-center space-x-2 text-[#A1A1AA]">
+                                <span>🎮</span>
+                                <span>{{ book.play_count|default:0 }} jogadas</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-[#A1A1AA]">
+                                <span>👥</span>
+                                <span>{{ book.unique_players|default:0 }} jogadores</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-[#A1A1AA]">
+                                <span>💰</span>
+                                <span>${{ book.total_cost|default:0|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if book.processed_book %}
+                        <div class="space-y-1 text-sm">
+                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium
+                                {% if book.processed_book.processing_status == 'success' %}bg-[#10B981] bg-opacity-10 text-[#10B981]
+                                {% elif book.processed_book.processing_status == 'error' %}bg-[#DC2626] bg-opacity-10 text-[#DC2626]
+                                {% else %}bg-[#F59E0B] bg-opacity-10 text-[#F59E0B]{% endif %}">
+                                {{ book.processed_book.get_processing_status_display }}
+                            </span>
+                            <p class="text-[#71717A]">{{ book.processed_book.chunks_indexed }} chunks</p>
+                        </div>
+                        {% else %}
+                        <span class="text-sm text-[#71717A]">Não processado</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-right space-x-2">
+                        <a href="{% url 'game_admin:book_detail' book.id %}" class="inline-flex items-center px-3 py-1.5 bg-[#1A1A1A] hover:bg-[#27272A] text-white text-sm rounded-lg transition-colors">
+                            Ver
+                        </a>
+                        <a href="{% url 'game_admin:delete_book' book.id %}" class="inline-flex items-center px-3 py-1.5 bg-[#DC2626] bg-opacity-10 hover:bg-opacity-20 text-[#DC2626] text-sm rounded-lg transition-colors">
+                            Deletar
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center">
+                        <div class="inline-flex flex-col items-center">
+                            <span class="text-5xl mb-4">📚</span>
+                            <p class="text-[#A1A1AA] mb-2">Nenhum livro encontrado</p>
+                            <a href="{% url 'game_admin:upload_book' %}" class="text-[#6366F1] hover:text-[#5558E3] text-sm">
+                                Upload primeiro livro
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="flex items-center justify-between">
+        <p class="text-sm text-[#71717A]">
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </p>
+        <div class="flex space-x-2">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if search %}&q={{ search }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="px-4 py-2 bg-[#1A1A1A] hover:bg-[#27272A] text-white rounded-lg transition-colors">
+                Primeira
+            </a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if search %}&q={{ search }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="px-4 py-2 bg-[#1A1A1A] hover:bg-[#27272A] text-white rounded-lg transition-colors">
+                Anterior
+            </a>
+            {% endif %}
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search %}&q={{ search }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="px-4 py-2 bg-[#1A1A1A] hover:bg-[#27272A] text-white rounded-lg transition-colors">
+                Próxima
+            </a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if search %}&q={{ search }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="px-4 py-2 bg-[#1A1A1A] hover:bg-[#27272A] text-white rounded-lg transition-colors">
+                Última
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

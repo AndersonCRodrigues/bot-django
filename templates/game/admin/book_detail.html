@@ -1,0 +1,147 @@
+{% extends 'game/admin/base_admin.html' %}
+
+{% block title %}{{ adventure.title }}{% endblock %}
+{% block page_title %}{{ adventure.title }}{% endblock %}
+{% block page_subtitle %}Detalhes da aventura{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+                <h3 class="text-lg font-semibold mb-4">Informações</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-[#71717A]">Gênero</p>
+                            <p class="text-white font-medium">{{ adventure.get_genre_display }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-[#71717A]">Dificuldade</p>
+                            <p class="text-white font-medium">{{ adventure.get_difficulty_display }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-[#71717A]">Duração Estimada</p>
+                            <p class="text-white font-medium">{{ adventure.estimated_duration }} min</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-[#71717A]">Status</p>
+                            {% if adventure.is_published %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#10B981] bg-opacity-10 text-[#10B981]">
+                                Publicado
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#71717A] bg-opacity-10 text-[#71717A]">
+                                Rascunho
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-sm text-[#71717A] mb-2">Descrição</p>
+                        <p class="text-white">{{ adventure.description }}</p>
+                    </div>
+                </div>
+            </div>
+
+            {% if processed %}
+            <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+                <h3 class="text-lg font-semibold mb-4">Processamento</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-[#71717A]">Status</p>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                                {% if processed.processing_status == 'success' %}bg-[#10B981] bg-opacity-10 text-[#10B981]
+                                {% elif processed.processing_status == 'error' %}bg-[#DC2626] bg-opacity-10 text-[#DC2626]
+                                {% else %}bg-[#F59E0B] bg-opacity-10 text-[#F59E0B]{% endif %}">
+                                {{ processed.get_processing_status_display }}
+                            </span>
+                        </div>
+                        <div>
+                            <p class="text-sm text-[#71717A]">Classe Weaviate</p>
+                            <p class="text-white font-mono text-sm">{{ processed.weaviate_class_name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-[#71717A]">Chunks Extraídos</p>
+                            <p class="text-white font-medium">{{ processed.chunks_extracted }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-[#71717A]">Chunks Indexados</p>
+                            <p class="text-white font-medium">{{ processed.chunks_indexed }}</p>
+                        </div>
+                    </div>
+
+                    {% if processed.error_message %}
+                    <div class="p-4 bg-[#DC2626] bg-opacity-10 border border-[#DC2626] rounded-lg">
+                        <p class="text-sm text-[#DC2626]">{{ processed.error_message }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+                <h3 class="text-lg font-semibold mb-4">Estatísticas (30 dias)</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="p-4 bg-[#1A1A1A] rounded-lg">
+                        <p class="text-sm text-[#71717A] mb-1">Total de Jogadas</p>
+                        <p class="text-2xl font-bold text-white">{{ stats.total_calls|default:0 }}</p>
+                    </div>
+                    <div class="p-4 bg-[#1A1A1A] rounded-lg">
+                        <p class="text-sm text-[#71717A] mb-1">Jogadores Únicos</p>
+                        <p class="text-2xl font-bold text-white">{{ stats.unique_players|default:0 }}</p>
+                    </div>
+                    <div class="p-4 bg-[#1A1A1A] rounded-lg">
+                        <p class="text-sm text-[#71717A] mb-1">Tokens Usados</p>
+                        <p class="text-2xl font-bold text-white">{{ stats.total_tokens|default:0 }}</p>
+                    </div>
+                    <div class="p-4 bg-[#1A1A1A] rounded-lg">
+                        <p class="text-sm text-[#71717A] mb-1">Custo Total</p>
+                        <p class="text-2xl font-bold text-white">${{ stats.total_cost|default:0|floatformat:2 }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            {% if adventure.cover_image %}
+            <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] overflow-hidden">
+                <img src="{{ adventure.cover_image.url }}" alt="{{ adventure.title }}" class="w-full">
+            </div>
+            {% endif %}
+
+            <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+                <h3 class="text-lg font-semibold mb-4">Ações</h3>
+                <div class="space-y-3">
+                    <a href="{% url 'adventures:detail' adventure.id %}" class="block w-full text-center px-4 py-2 bg-[#6366F1] hover:bg-[#5558E3] text-white rounded-lg transition-colors">
+                        Ver no Site
+                    </a>
+                    <a href="{% url 'game_admin:delete_book' adventure.id %}" class="block w-full text-center px-4 py-2 bg-[#DC2626] bg-opacity-10 hover:bg-opacity-20 text-[#DC2626] rounded-lg transition-colors">
+                        Deletar Livro
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-[#0F0F0F] rounded-xl border border-[#27272A] p-6">
+                <h3 class="text-lg font-semibold mb-4">Metadados</h3>
+                <div class="space-y-3 text-sm">
+                    <div>
+                        <p class="text-[#71717A]">Autor</p>
+                        <p class="text-white">{{ adventure.author.username }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[#71717A]">Criado em</p>
+                        <p class="text-white">{{ adventure.created_at|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[#71717A]">Atualizado em</p>
+                        <p class="text-white">{{ adventure.updated_at|date:"d/m/Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

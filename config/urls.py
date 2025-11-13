@@ -18,6 +18,7 @@ urlpatterns = [
     path("accounts/", include("apps.accounts.urls")),
     path("adventures/", include("apps.adventures.urls")),
     path("characters/", include("apps.characters.urls")),
+    path("admin/game/", include("apps.game.admin.urls")),
 ]
 
 if settings.DEBUG:

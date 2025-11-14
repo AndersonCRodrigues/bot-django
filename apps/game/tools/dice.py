@@ -1,10 +1,8 @@
 import random
 import re
 from typing import Dict
-from langchain_core.tools import tool
 
 
-@tool
 def roll_dice(notation: str) -> dict:
     """
     Rola dados seguindo notação RPG padrão.
@@ -56,7 +54,6 @@ def roll_dice(notation: str) -> dict:
     }
 
 
-@tool
 def check_luck(character_luck: int) -> dict:
     """
     Testa a sorte do personagem no estilo Fighting Fantasy.
@@ -98,7 +95,6 @@ def check_luck(character_luck: int) -> dict:
     }
 
 
-@tool
 def check_skill(character_skill: int, difficulty_modifier: int = 0) -> dict:
     """
     Testa a habilidade do personagem.

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Carregar Jogo{% endblock %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 0 auto; padding: 40px 20px;">
+    <h1 style="font-size: 2.5em; color: #f59e0b; margin-bottom: 40px; text-align: center;">
+        💾 Carregar Jogo
+    </h1>
+
+    <div style="display: grid; gap: 20px;">
+        {% for item in sessions %}
+        {% with session=item.session adventure=item.adventure character=item.character %}
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 12px; padding: 30px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); transition: transform 0.3s ease;"
+             onmouseover="this.style.transform='translateY(-3px)'"
+             onmouseout="this.style.transform='translateY(0)'">
+
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 30px; align-items: start;">
+                <div>
+                    <h2 style="color: #f59e0b; font-size: 1.8em; margin-bottom: 10px;">{{ adventure.title }}</h2>
+                    <p style="color: #94a3b8; margin-bottom: 20px;">Personagem: <strong style="color: #fff;">{{ character.name }}</strong></p>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div>
+                            <div style="color: #94a3b8; font-size: 0.85em;">ENERGIA</div>
+                            <div style="color: #10b981; font-size: 1.5em; font-weight: bold;">{{ character.stamina }}</div>
+                        </div>
+                        <div>
+                            <div style="color: #94a3b8; font-size: 0.85em;">SORTE</div>
+                            <div style="color: #8b5cf6; font-size: 1.5em; font-weight: bold;">{{ character.luck }}</div>
+                        </div>
+                        <div>
+                            <div style="color: #94a3b8; font-size: 0.85em;">SEÇÃO</div>
+                            <div style="color: #3b82f6; font-size: 1.5em; font-weight: bold;">{{ session.current_section }}</div>
+                        </div>
+                        <div>
+                            <div style="color: #94a3b8; font-size: 0.85em;">TURNOS</div>
+                            <div style="color: #f59e0b; font-size: 1.5em; font-weight: bold;">{{ session.history|length }}</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        {% if session.status == 'active' %}
+                        <span style="background: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em;">
+                            ✓ Ativa
+                        </span>
+                        {% elif session.status == 'dead' %}
+                        <span style="background: #ef4444; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em;">
+                            💀 Morto
+                        </span>
+                        {% elif session.status == 'completed' %}
+                        <span style="background: #8b5cf6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em;">
+                            🏆 Completado
+                        </span>
+                        {% endif %}
+
+                        <span style="background: rgba(255, 255, 255, 0.1); color: #cbd5e1; padding: 4px 12px; border-radius: 12px; font-size: 0.85em;">
+                            {{ adventure.get_difficulty_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <a href="{% url 'game:play' session.session_id %}"
+                       style="padding: 12px 24px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; text-align: center; transition: all 0.3s ease;"
+                       onmouseover="this.style.transform='scale(1.05)'"
+                       onmouseout="this.style.transform='scale(1)'">
+                        {% if session.status == 'active' %}
+                            ▶️ CONTINUAR
+                        {% else %}
+                            👁️ VER
+                        {% endif %}
+                    </a>
+
+                    <a href="{% url 'game:history' session.session_id %}"
+                       style="padding: 12px 24px; background: #475569; color: white; text-decoration: none; border-radius: 8px; text-align: center; transition: all 0.3s ease;"
+                       onmouseover="this.style.background='#64748b'"
+                       onmouseout="this.style.background='#475569'">
+                        📜 HISTÓRICO
+                    </a>
+
+                    <button onclick="deleteSession('{{ session.session_id }}')"
+                            style="padding: 12px 24px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;"
+                            onmouseover="this.style.background='#b91c1c'"
+                            onmouseout="this.style.background='#dc2626'">
+                        🗑️ DELETAR
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+        {% empty %}
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 12px; padding: 60px; text-align: center; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
+            <span style="font-size: 5em; display: block; margin-bottom: 20px;">💾</span>
+            <h3 style="color: #cbd5e1; font-size: 1.5em; margin-bottom: 10px;">Nenhum save encontrado</h3>
+            <p style="color: #94a3b8; margin-bottom: 30px;">Comece uma nova aventura!</p>
+
+            <a href="{% url 'game:list' %}"
+               style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; text-decoration: none; border-radius: 8px; font-weight: bold;"
+               onmouseover="this.style.transform='translateY(-2px)'"
+               onmouseout="this.style.transform='translateY(0)'">
+                ⚔️ ESCOLHER AVENTURA
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="margin-top: 40px; text-align: center;">
+        <a href="{% url 'game:list' %}"
+           style="display: inline-block; padding: 12px 30px; background: #475569; color: white; text-decoration: none; border-radius: 8px;"
+           onmouseover="this.style.background='#64748b'"
+           onmouseout="this.style.background='#475569'">
+            🏠 Ver Aventuras
+        </a>
+    </div>
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+
+function deleteSession(sessionId) {
+    if (!confirm('Tem certeza que deseja deletar este save?')) {
+        return;
+    }
+
+    fetch(`/game/play/${sessionId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erro ao deletar save.');
+    });
+}
+</script>
+{% endblock %}

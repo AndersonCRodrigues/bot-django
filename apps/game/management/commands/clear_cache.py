@@ -31,13 +31,29 @@ class Command(BaseCommand):
         self.stdout.write("🗑️  Limpando cache de retrieval...")
 
         try:
-            cache = get_cache()
+            import sqlite3
+            from django.conf import settings
+
+            # Conectar diretamente ao banco SQLite do cache
+            cache_dir = os.path.join(settings.BASE_DIR, 'cache')
+            db_path = os.path.join(cache_dir, 'retrieval_cache.db')
+
+            if not os.path.exists(db_path):
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"\n⚠️  Arquivo de cache não encontrado: {db_path}"
+                    )
+                )
+                return
+
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
 
             # Limpar todas as entradas
-            cache.cursor.execute("DELETE FROM retrieval_cache")
-            cache.conn.commit()
-
-            count = cache.cursor.rowcount
+            cursor.execute("DELETE FROM retrieval_cache")
+            count = cursor.rowcount
+            conn.commit()
+            conn.close()
 
             self.stdout.write(
                 self.style.SUCCESS(

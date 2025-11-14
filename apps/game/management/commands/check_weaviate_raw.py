@@ -4,7 +4,7 @@ Verifica dados no Weaviate SEM usar cache.
 
 from django.core.management.base import BaseCommand
 from apps.adventures.models import Adventure
-from apps.game.services.weaviate_client import get_weaviate_client
+from apps.game.services.weaviate_service import get_weaviate_client
 import weaviate.classes.query as wq
 
 

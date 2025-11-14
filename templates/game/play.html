@@ -401,9 +401,9 @@ document.getElementById('action-form').addEventListener('submit', async function
         formData.append('action', action);
         formData.append('csrfmiddlewaretoken', csrfToken);
 
-        console.log('Sending request to:', `/game/action/${sessionId}/`);
+        console.log('Sending request to:', `/game/play/${sessionId}/action/`);
 
-        const response = await fetch(`/game/action/${sessionId}/`, {
+        const response = await fetch(`/game/play/${sessionId}/action/`, {
             method: 'POST',
             body: formData,
         });

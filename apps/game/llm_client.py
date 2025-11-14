@@ -26,6 +26,7 @@ llm_client = ChatGoogleGenerativeAI(
     google_api_key=settings.GEMINI_API_KEY,
     temperature=0.7,
     max_output_tokens=2048,
+    max_retries=0,  # 🚫 Desabilita retries para evitar 4x mais chamadas no 429
 )
 
 logger.info("[LLM Client] Criando instância global de GoogleGenerativeAIEmbeddings")

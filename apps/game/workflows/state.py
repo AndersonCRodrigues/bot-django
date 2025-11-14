@@ -38,12 +38,6 @@ class GameState(TypedDict):
     history: List[Dict[str, Any]]
     turn_number: int
     timestamp: str
-    # 🎯 Novos campos para RAG e extração automática
-    auto_extracted_exits: List[int]
-    auto_extracted_flags: Dict[str, Any]
-    auto_extracted_npcs: List[str]
-    auto_extracted_combat: Dict[str, Any]
-    context_sections: List[Dict[str, Any]]
 
 
 class CombatState(TypedDict):

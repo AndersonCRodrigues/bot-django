@@ -475,12 +475,6 @@ document.getElementById('action-form').addEventListener('submit', async function
 scrollToBottom();
 
 // Debug: mostrar history carregado
-console.log('History loaded:', {{ history|length }} entries);
-{% for entry in history %}
-    console.log('Entry:', {
-        player_action: '{{ entry.player_action|escapejs }}',
-        has_narrative: {{ entry.narrative|yesno:"true,false" }}
-    });
-{% endfor %}
+console.log('History loaded:', {{ history|length }}, 'entries');
 </script>
 {% endblock %}

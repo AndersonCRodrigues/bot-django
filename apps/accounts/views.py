@@ -1,6 +1,13 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
+from django.contrib.auth.views import (
+    PasswordResetView,
+    PasswordResetDoneView,
+    PasswordResetConfirmView,
+    PasswordResetCompleteView
+)
 from django.contrib import messages
 from django.views.generic import CreateView, FormView
 from django.urls import reverse_lazy
@@ -66,3 +73,40 @@ def profile_view(request):
         form = ProfileForm(instance=profile)
 
     return render(request, "accounts/profile.html", {"form": form, "profile": profile})
+
+
+# ===== PASSWORD RESET VIEWS =====
+
+class CustomPasswordResetView(PasswordResetView):
+    """View personalizada para solicitar reset de senha."""
+    template_name = 'accounts/password_reset.html'
+    email_template_name = 'accounts/password_reset_email.html'
+    subject_template_name = 'accounts/password_reset_subject.txt'
+    success_url = reverse_lazy('accounts:password_reset_done')
+
+    def form_valid(self, form):
+        messages.success(
+            self.request,
+            'Instruções para redefinir sua senha foram enviadas para seu email.'
+        )
+        return super().form_valid(form)
+
+
+class CustomPasswordResetDoneView(PasswordResetDoneView):
+    """View confirmação de email enviado."""
+    template_name = 'accounts/password_reset_done.html'
+
+
+class CustomPasswordResetConfirmView(PasswordResetConfirmView):
+    """View para definir nova senha."""
+    template_name = 'accounts/password_reset_confirm.html'
+    success_url = reverse_lazy('accounts:password_reset_complete')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Sua senha foi redefinida com sucesso!')
+        return super().form_valid(form)
+
+
+class CustomPasswordResetCompleteView(PasswordResetCompleteView):
+    """View confirmação de senha redefinida."""
+    template_name = 'accounts/password_reset_complete.html'

@@ -188,4 +188,4 @@ WEAVIATE_SECURE = config("WEAVIATE_SECURE", default=False, cast=bool)
 WEAVIATE_API_KEY = config("WEAVIATE_API_KEY", default=None)
 
 # Google AI Configuration
-GOOGLE_API_KEY = config("GOOGLE_API_KEY")
+GEMINI_API_KEY = config("GOOGLE_API_KEY")

@@ -99,6 +99,7 @@ pydantic-settings==2.12.0
 pydantic_core==2.41.5
 Pygments==2.19.2
 pymongo==4.15.4
+PyMuPDF==1.26.6
 pyOpenSSL==25.3.0
 python-crontab==3.3.0
 python-dateutil==2.9.0.post0

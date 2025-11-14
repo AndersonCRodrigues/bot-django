@@ -1,14 +1,12 @@
-/**
- * Upload.js - Drag & Drop para upload de arquivos
- */
-
 class FileUploader {
     constructor(options = {}) {
         this.dropZone = options.dropZone;
         this.fileInput = options.fileInput;
         this.previewArea = options.previewArea;
-        this.allowedTypes = options.allowedTypes || ['application/pdf'];
-        this.maxSize = options.maxSize || 50 * 1024 * 1024; // 50MB
+
+        const acceptAttr = this.dropZone?.getAttribute('data-accept');
+        this.acceptType = acceptAttr || 'application/pdf';
+        this.maxSize = options.maxSize || 50 * 1024 * 1024;
 
         this.init();
     }
@@ -16,7 +14,6 @@ class FileUploader {
     init() {
         if (!this.dropZone || !this.fileInput) return;
 
-        // Drag & Drop events
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             this.dropZone.addEventListener(eventName, this.preventDefaults, false);
         });
@@ -30,8 +27,6 @@ class FileUploader {
         });
 
         this.dropZone.addEventListener('drop', (e) => this.handleDrop(e), false);
-
-        // Click to upload
         this.dropZone.addEventListener('click', () => this.fileInput.click());
         this.fileInput.addEventListener('change', (e) => this.handleFiles(e.target.files));
     }
@@ -55,23 +50,33 @@ class FileUploader {
         this.handleFiles(files);
     }
 
+    isFileTypeAccepted(fileType) {
+        if (this.acceptType === 'image/*') {
+            return fileType.startsWith('image/');
+        }
+
+        if (this.acceptType === 'application/pdf') {
+            return fileType === 'application/pdf';
+        }
+
+        return fileType === this.acceptType;
+    }
+
     handleFiles(files) {
         const file = files[0];
 
         if (!file) return;
 
-        // Validações
-        if (!this.allowedTypes.includes(file.type)) {
-            this.showError('Tipo de arquivo não permitido. Apenas PDF.');
+        if (!this.isFileTypeAccepted(file.type)) {
+            this.showError('Tipo de arquivo não permitido.');
             return;
         }
 
         if (file.size > this.maxSize) {
-            this.showError(`Arquivo muito grande. Máximo: ${this.maxSize / 1024 / 1024}MB`);
+            this.showError(`Arquivo muito grande. Máximo: ${Math.round(this.maxSize / 1024 / 1024)}MB`);
             return;
         }
 
-        // Preview
         this.showPreview(file);
     }
 
@@ -79,19 +84,20 @@ class FileUploader {
         if (!this.previewArea) return;
 
         const sizeInMB = (file.size / 1024 / 1024).toFixed(2);
+        const icon = file.type.startsWith('image/') ? '🖼️' : '📄';
 
         this.previewArea.innerHTML = `
             <div class="flex items-center justify-between p-4 bg-[#1A1A1A] rounded-lg border border-[#27272A]">
                 <div class="flex items-center space-x-3">
-                    <div class="w-12 h-12 bg-[#DC2626] bg-opacity-10 rounded-lg flex items-center justify-center">
-                        <span class="text-2xl">📄</span>
+                    <div class="w-12 h-12 bg-[#6366F1] bg-opacity-10 rounded-lg flex items-center justify-center">
+                        <span class="text-2xl">${icon}</span>
                     </div>
                     <div>
                         <p class="font-medium text-white">${file.name}</p>
                         <p class="text-sm text-[#71717A]">${sizeInMB} MB</p>
                     </div>
                 </div>
-                <button type="button" onclick="this.closest('.file-uploader').querySelector('input[type=file]').value=''; this.closest('div').remove();" class="text-[#DC2626] hover:text-[#EF4444]">
+                <button type="button" onclick="this.closest('.file-uploader').querySelector('input[type=file]').value=''; this.parentElement.parentElement.classList.add('hidden');" class="text-[#DC2626] hover:text-[#EF4444]">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -103,11 +109,10 @@ class FileUploader {
     }
 
     showError(message) {
-        alert(message); // Pode ser melhorado com toast notification
+        alert(message);
     }
 }
 
-// Auto-init para classe .file-uploader
 document.addEventListener('DOMContentLoaded', () => {
     const uploaders = document.querySelectorAll('.file-uploader');
 

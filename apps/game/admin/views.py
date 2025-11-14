@@ -1,3 +1,4 @@
+import contextlib
 import os
 from datetime import timedelta
 from decimal import Decimal
@@ -24,15 +25,12 @@ def dashboard(request):
     """
     Dashboard principal com métricas em tempo real.
     """
-    # Período de análise
     days = int(request.GET.get("days", 30))
     since = timezone.now() - timedelta(days=days)
 
-    # ====== BUSINESS METRICS ======
     total_users = User.objects.count()
     new_users = User.objects.filter(date_joined__gte=since).count()
 
-    # Active users (D1, D7, D30)
     active_d1 = (
         APIUsage.objects.filter(created_at__gte=timezone.now() - timedelta(days=1))
         .values("user")
@@ -51,7 +49,6 @@ def dashboard(request):
         APIUsage.objects.filter(created_at__gte=since).values("user").distinct().count()
     )
 
-    # ====== CONTENT METRICS ======
     total_adventures = Adventure.objects.count()
     published_adventures = Adventure.objects.filter(is_published=True).count()
 
@@ -59,7 +56,6 @@ def dashboard(request):
         "-play_count"
     )[:5]
 
-    # ====== TECHNICAL METRICS ======
     api_stats = APIUsage.objects.filter(created_at__gte=since).aggregate(
         total_calls=Count("id"),
         total_tokens=Sum("tokens_total"),
@@ -73,16 +69,12 @@ def dashboard(request):
         (api_stats["success_count"] / total_calls * 100) if total_calls > 0 else 0
     )
 
-    # ====== SYSTEM HEALTH ======
     weaviate_status = check_weaviate_health()
 
-    # Storage usage
     processed_books = ProcessedBook.objects.aggregate(
         total_size=Sum("pdf_size_bytes"), total_chunks=Sum("chunks_indexed")
     )
 
-    # ====== CHARTS DATA ======
-    # Tokens por dia (últimos 30 dias)
     daily_tokens = []
     for i in range(days):
         day = timezone.now().date() - timedelta(days=i)
@@ -97,7 +89,6 @@ def dashboard(request):
 
     daily_tokens.reverse()
 
-    # Custo por dia
     daily_costs = []
     for i in range(days):
         day = timezone.now().date() - timedelta(days=i)
@@ -109,7 +100,6 @@ def dashboard(request):
 
     daily_costs.reverse()
 
-    # Top operações
     top_operations = (
         APIUsage.objects.filter(created_at__gte=since)
         .values("operation_type")
@@ -117,10 +107,8 @@ def dashboard(request):
         .order_by("-count")[:5]
     )
 
-    # ====== ALERTS ======
     alerts = []
 
-    # Alert: custo alto
     daily_cost = APIUsage.objects.filter(
         created_at__date=timezone.now().date()
     ).aggregate(total=Sum("estimated_cost"))["total"] or Decimal("0")
@@ -133,13 +121,11 @@ def dashboard(request):
             }
         )
 
-    # Alert: taxa de erro alta
     if success_rate < 95 and total_calls > 10:
         alerts.append(
             {"type": "danger", "message": f"Taxa de sucesso baixa: {success_rate:.1f}%"}
         )
 
-    # Alert: Weaviate down
     if weaviate_status["status"] != "healthy":
         alerts.append({"type": "danger", "message": "Weaviate indisponível!"})
 
@@ -167,11 +153,9 @@ def dashboard(request):
             (processed_books["total_size"] or 0) / 1024 / 1024, 2
         ),
         "total_chunks": processed_books["total_chunks"] or 0,
-        # Charts
         "daily_tokens": daily_tokens,
         "daily_costs": daily_costs,
         "top_operations": top_operations,
-        # Alerts
         "alerts": alerts,
     }
 
@@ -186,12 +170,10 @@ def upload_book(request):
 
         if form.is_valid():
             try:
-                # Cria Adventure
                 adventure = form.save(commit=False)
                 adventure.author = request.user
                 adventure.save()
 
-                # Salva PDF temporariamente
                 pdf_file = request.FILES["pdf_file"]
                 upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads", "books")
                 os.makedirs(upload_dir, exist_ok=True)
@@ -202,7 +184,6 @@ def upload_book(request):
                     for chunk in pdf_file.chunks():
                         destination.write(chunk)
 
-                # Processa PDF (async seria melhor, mas simplificado)
                 weaviate_class = form.cleaned_data["weaviate_class_name"]
 
                 result = process_book_upload(
@@ -241,16 +222,11 @@ def upload_book(request):
 @superuser_required
 def list_books(request):
     """Lista todos os livros com estatísticas."""
-    # Filtros
     status_filter = request.GET.get("status", "all")
     search = request.GET.get("q", "")
 
-    # Query base
-    books = Adventure.objects.select_related("author").prefetch_related(
-        "processed_book"
-    )
+    books = Adventure.objects.prefetch_related("processed_book")
 
-    # Filtros
     if status_filter == "published":
         books = books.filter(is_published=True)
     elif status_filter == "draft":
@@ -261,7 +237,6 @@ def list_books(request):
             Q(title__icontains=search) | Q(description__icontains=search)
         )
 
-    # Anotações
     books = books.annotate(
         play_count=Count("api_usage"),
         total_tokens=Sum("api_usage__tokens_total"),
@@ -269,7 +244,6 @@ def list_books(request):
         unique_players=Count("api_usage__user", distinct=True),
     ).order_by("-created_at")
 
-    # Paginação
     paginator = Paginator(books, 10)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
@@ -306,7 +280,6 @@ def book_detail(request, pk):
         avg_response_time=Avg("response_time_ms"),
     )
 
-    # Personagens criados
     characters_count = Character.find_by_user_and_adventure(
         user_id=request.user.id, adventure_id=pk
     )
@@ -328,13 +301,9 @@ def delete_book(request, pk):
 
     if request.method == "POST":
         try:
-            # Remove do Weaviate
-            try:
+            with contextlib.suppress(ProcessedBook.DoesNotExist):
                 processed = ProcessedBook.objects.get(adventure=adventure)
                 delete_vector_store(processed.weaviate_class_name)
-            except ProcessedBook.DoesNotExist:
-                pass
-
             title = adventure.title
             adventure.delete()
 
@@ -358,10 +327,9 @@ def users_list(request):
         total_calls=Count("api_usage"),
         total_tokens=Sum("api_usage__tokens_total"),
         total_cost=Sum("api_usage__estimated_cost"),
-        characters_count=Count("profile__characters", distinct=True),
+        characters_count=Count("id", distinct=False),
     ).order_by("-date_joined")
 
-    # Paginação
     paginator = Paginator(users, 20)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
@@ -378,7 +346,6 @@ def api_logs(request):
     """Logs de API calls."""
     logs = APIUsage.objects.select_related("user", "adventure").order_by("-created_at")
 
-    # Filtros
     user_id = request.GET.get("user")
     operation = request.GET.get("operation")
     success = request.GET.get("success")
@@ -390,7 +357,6 @@ def api_logs(request):
     if success:
         logs = logs.filter(success=(success == "true"))
 
-    # Paginação
     paginator = Paginator(logs, 50)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
@@ -418,7 +384,6 @@ def system_health(request):
     except Exception as e:
         mongo_status = {"status": "unhealthy", "error": str(e)}
 
-    # PostgreSQL check
     try:
         User.objects.count()
         postgres_status = {"status": "healthy"}

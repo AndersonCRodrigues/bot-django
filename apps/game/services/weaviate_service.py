@@ -1,3 +1,4 @@
+import contextlib
 import logging
 from typing import Dict, Optional
 from langchain_weaviate import WeaviateVectorStore
@@ -5,6 +6,7 @@ from django.conf import settings
 import weaviate
 from weaviate.connect import ConnectionParams, ProtocolParams
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+import atexit
 
 logger = logging.getLogger("game.weaviate")
 
@@ -43,7 +45,7 @@ def get_weaviate_client():
 
 def get_embedding_model():
     return GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001",
+        model="models/text-embedding-004",
         google_api_key=settings.GEMINI_API_KEY,
     )
 
@@ -90,7 +92,7 @@ def create_as_retriever(class_name: str):
 def delete_vector_store(class_name: str) -> bool:
     try:
         client: weaviate.WeaviateClient = get_weaviate_client()
-        client.collections.delete(collection_name=class_name)
+        client.collections.delete(class_name)
 
         if class_name in _vector_store_cache:
             del _vector_store_cache[class_name]
@@ -129,3 +131,13 @@ def clear_cache():
     global _vector_store_cache
     _vector_store_cache.clear()
     logger.info("Cache de vector stores limpo")
+
+
+def close_weaviate_client():
+    global _weaviate_client
+    if _weaviate_client is not None:
+        with contextlib.suppress(Exception):
+            _weaviate_client.close()
+
+
+atexit.register(close_weaviate_client)

@@ -215,6 +215,33 @@ class Character:
         collection.update_one({"_id": self._id}, {"$set": self.to_dict()}, upsert=True)
 
     def delete(self):
-        """Deleta personagem (síncrono)"""
+        """
+        Deleta personagem e invalida todas as sessões relacionadas.
+
+        As sessões são marcadas como STATUS_DEAD em vez de deletadas
+        para manter histórico.
+        """
+        import logging
+        logger = logging.getLogger("game.character")
+
+        # Importar aqui para evitar circular import
+        from apps.game.models import GameSession
+
+        # Invalidar todas as sessões deste personagem
+        try:
+            session_collection = GameSession.get_collection()
+            result = session_collection.update_many(
+                {"character_id": str(self._id)},
+                {"$set": {"status": GameSession.STATUS_DEAD}}
+            )
+            logger.info(
+                f"[Character.delete] Invalidadas {result.modified_count} sessões "
+                f"do personagem {self.name} (ID: {self.id})"
+            )
+        except Exception as e:
+            logger.error(f"[Character.delete] Erro ao invalidar sessões: {e}")
+
+        # Deletar personagem
         collection = self.get_collection()
         collection.delete_one({"_id": self._id})
+        logger.info(f"[Character.delete] Personagem {self.name} (ID: {self.id}) deletado")

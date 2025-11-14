@@ -301,6 +301,49 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
     action_result = None
     updates = {}
 
+    # ⚔️ COMBATE: Iniciar se não estiver em combate
+    if action_type == 'combat' and not state.get('in_combat'):
+        logger.info(f"[general_narrative] ⚔️ Iniciando combate com '{action_target}'")
+
+        # Extrair dados do inimigo do RAG ou usar padrão
+        enemy_data = section_info.get('combat')
+
+        if not enemy_data:
+            # Tentar extrair do texto do RAG
+            # Padrão: Guarda (HABILIDADE 7, ENERGIA 5)
+            logger.warning(f"[general_narrative] ⚠️ Sem dados de combate no RAG, usando inimigo padrão")
+            enemy_data = {
+                'name': action_target or 'Guarda',
+                'skill': 7,
+                'stamina': 5
+            }
+
+        # Iniciar combate
+        combat_info = start_combat(
+            enemy_name=enemy_data.get('name', action_target or 'Inimigo'),
+            enemy_skill=enemy_data.get('skill', 7),
+            enemy_stamina=enemy_data.get('stamina', 5)
+        )
+
+        # Atualizar state com dados de combate
+        updates['in_combat'] = True
+        updates['combat_data'] = {
+            'enemy_name': combat_info['enemy']['name'],
+            'enemy_skill': combat_info['enemy']['skill'],
+            'enemy_stamina': combat_info['enemy']['stamina'],
+            'enemy_max_stamina': combat_info['enemy']['stamina'],
+            'rounds': 0
+        }
+
+        logger.info(f"[general_narrative] ✓ Combate iniciado: {combat_info['enemy']['name']} (HAB {combat_info['enemy']['skill']}, ENERGIA {combat_info['enemy']['stamina']})")
+
+        # Atualizar state agora para que _generate_combat_narrative possa usá-lo
+        state['in_combat'] = True
+        state['combat_data'] = updates['combat_data']
+
+        # Chamar fluxo de combate para executar primeiro round
+        return _generate_combat_narrative(state)
+
     if action_type == 'pickup':
         # Validar pickup
         validation = validate_pickup_item(action_target, available_items, inventory)

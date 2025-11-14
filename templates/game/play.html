@@ -5,17 +5,10 @@
 
 {% block content %}
 <div class="min-h-screen bg-[#0A0A0A]">
+    <div class="flex flex-col lg:flex-row h-screen">
 
-    <!-- Painel Lateral Flutuante (Mobile/Desktop) -->
-    <div id="stats-panel" class="fixed right-0 top-0 h-full w-full sm:w-80 bg-[#0F0F0F] border-l border-[#27272A] transform translate-x-full transition-transform duration-300 z-50 overflow-y-auto">
-        <div class="p-6">
-            <!-- Fechar Painel -->
-            <button onclick="toggleStatsPanel()" class="absolute top-4 right-4 text-[#71717A] hover:text-white">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-
+        <!-- Sidebar de Stats (Desktop sempre visível, Mobile colapsável) -->
+        <aside class="hidden lg:flex lg:flex-col lg:w-80 bg-[#0F0F0F] border-r border-[#27272A] p-6 overflow-y-auto">
             <!-- Personagem -->
             <div class="text-center mb-6">
                 <div class="w-16 h-16 mx-auto bg-gradient-to-br from-[#6366F1] to-[#8B5CF6] rounded-lg flex items-center justify-center mb-3">
@@ -25,64 +18,69 @@
                 <p class="text-[#71717A] text-sm">Seção <span id="section-badge">{{ session.current_section }}</span></p>
             </div>
 
-            <!-- Stats -->
-            <div class="space-y-3 mb-6">
-                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-3">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[#71717A] text-xs uppercase">Habilidade</span>
-                        <span class="text-white font-bold" id="stat-skill">{{ character.skill }}</span>
+            <!-- Stats com Barras de Progresso -->
+            <div class="space-y-4 mb-6">
+                <!-- Habilidade -->
+                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[#71717A] text-xs uppercase font-semibold">Habilidade</span>
+                        <span class="text-white text-xl font-bold" id="stat-skill">{{ character.skill }}</span>
                     </div>
                 </div>
 
-                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-3">
+                <!-- Energia -->
+                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-4">
                     <div class="flex justify-between items-center mb-2">
-                        <span class="text-[#71717A] text-xs uppercase">Energia</span>
-                        <span class="text-white font-bold" id="stat-stamina">{{ character.stamina }}/{{ character.initial_stamina }}</span>
+                        <span class="text-[#71717A] text-xs uppercase font-semibold">Energia</span>
+                        <span class="text-white text-xl font-bold" id="stat-stamina">{{ character.stamina }}/{{ character.initial_stamina }}</span>
                     </div>
-                    <div class="w-full bg-[#1A1A1A] rounded-full h-2">
-                        <div class="h-full transition-all duration-300 {% if character.stamina < 5 %}bg-gradient-to-r from-red-600 to-orange-500{% else %}bg-gradient-to-r from-[#10B981] to-[#6366F1]{% endif %} rounded-full"
+                    <div class="w-full bg-[#1A1A1A] rounded-full h-3 overflow-hidden">
+                        <div class="h-full transition-all duration-500 {% if character.stamina < 5 %}bg-gradient-to-r from-red-600 to-orange-500{% else %}bg-gradient-to-r from-[#10B981] to-[#6366F1]{% endif %} rounded-full"
                              style="width: {% if character.initial_stamina > 0 %}{% widthratio character.stamina character.initial_stamina 100 %}{% else %}0{% endif %}%"
                              id="bar-stamina"></div>
                     </div>
                 </div>
 
-                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-3">
+                <!-- Sorte -->
+                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-4">
                     <div class="flex justify-between items-center mb-2">
-                        <span class="text-[#71717A] text-xs uppercase">Sorte</span>
-                        <span class="text-white font-bold" id="stat-luck">{{ character.luck }}/{{ character.initial_luck }}</span>
+                        <span class="text-[#71717A] text-xs uppercase font-semibold">Sorte</span>
+                        <span class="text-white text-xl font-bold" id="stat-luck">{{ character.luck }}/{{ character.initial_luck }}</span>
                     </div>
-                    <div class="w-full bg-[#1A1A1A] rounded-full h-2">
-                        <div class="h-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all duration-300 rounded-full"
+                    <div class="w-full bg-[#1A1A1A] rounded-full h-3 overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all duration-500 rounded-full"
                              style="width: {% if character.initial_luck > 0 %}{% widthratio character.luck character.initial_luck 100 %}{% else %}0{% endif %}%"
                              id="bar-luck"></div>
                     </div>
                 </div>
 
-                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-3">
+                <!-- Ouro -->
+                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-4">
                     <div class="flex justify-between items-center">
-                        <span class="text-[#71717A] text-xs uppercase">Ouro</span>
-                        <span class="text-[#F59E0B] font-bold" id="stat-gold">{{ character.gold }}</span>
+                        <span class="text-[#71717A] text-xs uppercase font-semibold">Ouro</span>
+                        <span class="text-[#F59E0B] text-xl font-bold" id="stat-gold">{{ character.gold }}</span>
                     </div>
                 </div>
 
-                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-3">
+                <!-- Provisões -->
+                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-4">
                     <div class="flex justify-between items-center">
-                        <span class="text-[#71717A] text-xs uppercase">Provisões</span>
-                        <span class="text-white font-bold" id="stat-provisions">{{ character.provisions }}</span>
+                        <span class="text-[#71717A] text-xs uppercase font-semibold">Provisões</span>
+                        <span class="text-white text-xl font-bold" id="stat-provisions">{{ character.provisions }}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Inventário -->
-            <div>
+            <div class="flex-1">
                 <div class="flex items-center gap-2 mb-3">
                     <span class="text-xl">🎒</span>
                     <h3 class="text-white font-semibold">Inventário</h3>
                 </div>
-                <div class="space-y-2 max-h-48 overflow-y-auto" id="inventory-container">
+                <div class="space-y-2" id="inventory-container">
                     {% if session.inventory %}
                         {% for item in session.inventory %}
-                            <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg px-3 py-2 text-sm text-[#A1A1AA] hover:bg-[#1A1A1A] transition-colors cursor-pointer" onclick="useItem('{{ item }}')">
+                            <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg px-3 py-2 text-sm text-[#A1A1AA] hover:bg-[#1A1A1A] hover:border-[#6366F1] transition-colors cursor-pointer" onclick="useItem('{{ item }}')">
                                 {{ item }}
                             </div>
                         {% endfor %}
@@ -91,87 +89,169 @@
                     {% endif %}
                 </div>
             </div>
-        </div>
+        </aside>
+
+        <!-- Área Principal do Chat -->
+        <main class="flex-1 flex flex-col">
+            <!-- Header -->
+            <header class="bg-[#0F0F0F] border-b border-[#27272A] px-4 sm:px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <a href="{% url 'accounts:profile' %}" class="text-[#71717A] hover:text-white transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                    </a>
+                    <div>
+                        <h1 class="text-white font-bold text-lg">{{ adventure.title }}</h1>
+                        <p class="text-[#71717A] text-sm">{{ character.name }}</p>
+                    </div>
+                </div>
+                <button onclick="toggleMobileStats()" class="lg:hidden bg-[#0A0A0A] border border-[#27272A] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:border-[#6366F1] transition-colors">
+                    📊 Stats
+                </button>
+            </header>
+
+            <!-- Área de Chat com Scroll -->
+            <div id="chat-area" class="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4">
+                {% for entry in history %}
+                    {% if entry.player_action %}
+                        <div class="flex justify-end">
+                            <div class="max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-4 py-3">
+                                <p class="text-white text-sm">{{ entry.player_action }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if entry.narrative %}
+                        <div class="flex justify-start">
+                            <div class="max-w-3xl bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-4 py-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-[#F59E0B] text-xs font-semibold uppercase">Narrador</span>
+                                </div>
+                                <p class="text-white text-sm leading-relaxed whitespace-pre-wrap">{{ entry.narrative }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- Typing Indicator -->
+                <div id="typing-indicator" class="hidden flex justify-start">
+                    <div class="bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            <div class="flex gap-1">
+                                <div class="w-2 h-2 bg-[#71717A] rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                                <div class="w-2 h-2 bg-[#71717A] rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                                <div class="w-2 h-2 bg-[#71717A] rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+                            </div>
+                            <span class="text-[#71717A] text-xs">Narrando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Fixo -->
+            <footer class="bg-[#0F0F0F] border-t border-[#27272A] px-4 sm:px-6 py-4">
+                <form id="action-form" class="flex gap-3">
+                    {% csrf_token %}
+                    <input
+                        type="text"
+                        id="action-input"
+                        placeholder="Digite sua ação..."
+                        class="flex-1 bg-[#0A0A0A] border border-[#27272A] rounded-lg px-4 py-3 text-sm text-white placeholder-[#52525B] focus:outline-none focus:ring-2 focus:ring-[#6366F1] transition-all"
+                        autocomplete="off"
+                        required
+                    >
+                    <button
+                        type="submit"
+                        id="action-btn"
+                        class="bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold px-8 py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Enviar
+                    </button>
+                </form>
+            </footer>
+        </main>
     </div>
 
-    <!-- Área Principal -->
-    <div class="flex flex-col h-screen">
-
-        <!-- Header -->
-        <div class="bg-[#0F0F0F] border-b border-[#27272A] px-4 sm:px-6 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-3 flex-1 min-w-0">
-                <a href="{% url 'accounts:profile' %}" class="text-[#71717A] hover:text-white transition-colors flex-shrink-0">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                    </svg>
-                </a>
-                <div class="min-w-0 flex-1">
-                    <h1 class="text-white font-bold text-base sm:text-lg truncate">{{ adventure.title }}</h1>
-                    <p class="text-[#71717A] text-xs truncate">{{ character.name }}</p>
-                </div>
-            </div>
-            <button onclick="toggleStatsPanel()" class="bg-[#0A0A0A] border border-[#27272A] text-[#A1A1AA] hover:text-white hover:border-[#6366F1] rounded-lg px-3 sm:px-4 py-2 text-sm transition-all flex-shrink-0">
-                📊
+    <!-- Modal Mobile de Stats -->
+    <div id="mobile-stats-modal" class="hidden fixed inset-0 bg-black/80 z-50 lg:hidden">
+        <div class="bg-[#0F0F0F] h-full overflow-y-auto p-6">
+            <button onclick="toggleMobileStats()" class="absolute top-4 right-4 text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
             </button>
-        </div>
 
-        <!-- Área de Chat -->
-        <div id="chat-area" class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-3 sm:space-y-4">
-            {% for entry in history %}
-                {% if entry.player_action %}
-                    <div class="flex justify-end">
-                        <div class="max-w-[85%] sm:max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-3 sm:px-4 py-2 sm:py-3">
-                            <p class="text-white text-sm">{{ entry.player_action }}</p>
-                        </div>
-                    </div>
-                {% endif %}
-                {% if entry.narrative %}
-                    <div class="flex justify-start">
-                        <div class="max-w-[90%] sm:max-w-3xl bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-3 sm:px-4 py-2 sm:py-3">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="text-[#F59E0B] text-xs font-semibold uppercase">Narrador</span>
-                            </div>
-                            <p class="text-white text-sm leading-relaxed whitespace-pre-wrap">{{ entry.narrative }}</p>
-                        </div>
-                    </div>
-                {% endif %}
-            {% endfor %}
+            <!-- Conteúdo igual ao desktop -->
+            <div class="text-center mb-6 mt-10">
+                <div class="w-16 h-16 mx-auto bg-gradient-to-br from-[#6366F1] to-[#8B5CF6] rounded-lg flex items-center justify-center mb-3">
+                    <span class="text-2xl">⚔️</span>
+                </div>
+                <h3 class="text-lg font-bold text-white">{{ character.name }}</h3>
+                <p class="text-[#71717A] text-sm">Seção {{ session.current_section }}</p>
+            </div>
 
-            <!-- Loading Indicator -->
-            <div id="typing-indicator" class="hidden flex justify-start">
-                <div class="bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-3 sm:px-4 py-2 sm:py-3">
-                    <div class="flex items-center gap-2">
-                        <div class="flex gap-1">
-                            <div class="w-2 h-2 bg-[#71717A] rounded-full animate-bounce" style="animation-delay: 0ms"></div>
-                            <div class="w-2 h-2 bg-[#71717A] rounded-full animate-bounce" style="animation-delay: 150ms"></div>
-                            <div class="w-2 h-2 bg-[#71717A] rounded-full animate-bounce" style="animation-delay: 300ms"></div>
-                        </div>
-                        <span class="text-[#71717A] text-xs">Narrando...</span>
+            <div class="space-y-4 mb-6">
+                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[#71717A] text-xs uppercase font-semibold">Habilidade</span>
+                        <span class="text-white text-xl font-bold">{{ character.skill }}</span>
+                    </div>
+                </div>
+
+                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[#71717A] text-xs uppercase font-semibold">Energia</span>
+                        <span class="text-white text-xl font-bold">{{ character.stamina }}/{{ character.initial_stamina }}</span>
+                    </div>
+                    <div class="w-full bg-[#1A1A1A] rounded-full h-3">
+                        <div class="h-full {% if character.stamina < 5 %}bg-gradient-to-r from-red-600 to-orange-500{% else %}bg-gradient-to-r from-[#10B981] to-[#6366F1]{% endif %} rounded-full"
+                             style="width: {% if character.initial_stamina > 0 %}{% widthratio character.stamina character.initial_stamina 100 %}{% else %}0{% endif %}%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[#71717A] text-xs uppercase font-semibold">Sorte</span>
+                        <span class="text-white text-xl font-bold">{{ character.luck }}/{{ character.initial_luck }}</span>
+                    </div>
+                    <div class="w-full bg-[#1A1A1A] rounded-full h-3">
+                        <div class="h-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] rounded-full"
+                             style="width: {% if character.initial_luck > 0 %}{% widthratio character.luck character.initial_luck 100 %}{% else %}0{% endif %}%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[#71717A] text-xs uppercase font-semibold">Ouro</span>
+                        <span class="text-[#F59E0B] text-xl font-bold">{{ character.gold }}</span>
+                    </div>
+                </div>
+
+                <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[#71717A] text-xs uppercase font-semibold">Provisões</span>
+                        <span class="text-white text-xl font-bold">{{ character.provisions }}</span>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Input de Ação -->
-        <div class="bg-[#0F0F0F] border-t border-[#27272A] px-4 sm:px-6 py-3 sm:py-4">
-            <form id="action-form" class="flex gap-2 sm:gap-3">
-                {% csrf_token %}
-                <input
-                    type="text"
-                    id="action-input"
-                    placeholder="Digite sua ação..."
-                    class="flex-1 bg-[#0A0A0A] border border-[#27272A] rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm text-white placeholder-[#52525B] focus:outline-none focus:ring-2 focus:ring-[#6366F1] transition-all"
-                    autocomplete="off"
-                    required
-                >
-                <button
-                    type="submit"
-                    id="action-btn"
-                    class="bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                    ➤
-                </button>
-            </form>
+            <div>
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-xl">🎒</span>
+                    <h3 class="text-white font-semibold">Inventário</h3>
+                </div>
+                <div class="space-y-2">
+                    {% if session.inventory %}
+                        {% for item in session.inventory %}
+                            <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg px-3 py-2 text-sm text-[#A1A1AA]">
+                                {{ item }}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-[#52525B] text-sm py-4">Vazio</div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -184,13 +264,10 @@ const csrfToken = '{{ csrf_token }}';
 const initialStamina = {{ character.initial_stamina }};
 const initialLuck = {{ character.initial_luck }};
 
-// Toggle stats panel
-function toggleStatsPanel() {
-    const panel = document.getElementById('stats-panel');
-    panel.classList.toggle('translate-x-full');
+function toggleMobileStats() {
+    document.getElementById('mobile-stats-modal').classList.toggle('hidden');
 }
 
-// Scroll to bottom
 function scrollToBottom() {
     const chatArea = document.getElementById('chat-area');
     if (chatArea) {
@@ -200,14 +277,11 @@ function scrollToBottom() {
     }
 }
 
-// Use item
 function useItem(item) {
     document.getElementById('action-input').value = `Usar ${item}`;
-    toggleStatsPanel();
     document.getElementById('action-input').focus();
 }
 
-// Update stats
 function updateStats(stats) {
     if (!stats) return;
 
@@ -217,7 +291,6 @@ function updateStats(stats) {
     document.getElementById('stat-gold').textContent = stats.gold || 0;
     document.getElementById('stat-provisions').textContent = stats.provisions || 0;
 
-    // Update bars
     const staminaPercent = initialStamina > 0 ? (stats.stamina / initialStamina) * 100 : 0;
     const luckPercent = initialLuck > 0 ? (stats.luck / initialLuck) * 100 : 0;
 
@@ -226,17 +299,15 @@ function updateStats(stats) {
 
     if (staminaBar) {
         staminaBar.style.width = Math.max(0, Math.min(100, staminaPercent)) + '%';
-        // Change color if low
         if (stats.stamina < 5) {
-            staminaBar.className = 'h-full transition-all duration-300 bg-gradient-to-r from-red-600 to-orange-500 rounded-full';
+            staminaBar.className = 'h-full transition-all duration-500 bg-gradient-to-r from-red-600 to-orange-500 rounded-full';
         } else {
-            staminaBar.className = 'h-full transition-all duration-300 bg-gradient-to-r from-[#10B981] to-[#6366F1] rounded-full';
+            staminaBar.className = 'h-full transition-all duration-500 bg-gradient-to-r from-[#10B981] to-[#6366F1] rounded-full';
         }
     }
     if (luckBar) luckBar.style.width = Math.max(0, Math.min(100, luckPercent)) + '%';
 }
 
-// Update inventory
 function updateInventory(inventory) {
     const container = document.getElementById('inventory-container');
     if (!container) return;
@@ -247,11 +318,10 @@ function updateInventory(inventory) {
     }
 
     container.innerHTML = inventory.map(item =>
-        `<div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg px-3 py-2 text-sm text-[#A1A1AA] hover:bg-[#1A1A1A] transition-colors cursor-pointer" onclick="useItem('${item}')">${item}</div>`
+        `<div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg px-3 py-2 text-sm text-[#A1A1AA] hover:bg-[#1A1A1A] hover:border-[#6366F1] transition-colors cursor-pointer" onclick="useItem('${item}')">${item}</div>`
     ).join('');
 }
 
-// Add message to chat
 function addMessage(type, content) {
     const chatArea = document.getElementById('chat-area');
     const typingIndicator = document.getElementById('typing-indicator');
@@ -260,7 +330,7 @@ function addMessage(type, content) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'flex justify-end';
         messageDiv.innerHTML = `
-            <div class="max-w-[85%] sm:max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-3 sm:px-4 py-2 sm:py-3">
+            <div class="max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-4 py-3">
                 <p class="text-white text-sm">${content}</p>
             </div>
         `;
@@ -269,7 +339,7 @@ function addMessage(type, content) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'flex justify-start';
         messageDiv.innerHTML = `
-            <div class="max-w-[90%] sm:max-w-3xl bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-3 sm:px-4 py-2 sm:py-3">
+            <div class="max-w-3xl bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-4 py-3">
                 <div class="flex items-center gap-2 mb-2">
                     <span class="text-[#F59E0B] text-xs font-semibold uppercase">Narrador</span>
                 </div>
@@ -282,7 +352,6 @@ function addMessage(type, content) {
     scrollToBottom();
 }
 
-// Handle form submission
 document.getElementById('action-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -292,15 +361,12 @@ document.getElementById('action-form').addEventListener('submit', async function
 
     if (!action) return;
 
-    // Add user message
     addMessage('user', action);
 
-    // Clear input and disable
     input.value = '';
     input.disabled = true;
     btn.disabled = true;
 
-    // Show typing indicator
     document.getElementById('typing-indicator').classList.remove('hidden');
     scrollToBottom();
 
@@ -316,27 +382,20 @@ document.getElementById('action-form').addEventListener('submit', async function
 
         const data = await response.json();
 
-        // Hide typing indicator
         document.getElementById('typing-indicator').classList.add('hidden');
 
         if (data.success) {
-            // Add narrator response
             if (data.narrative) {
                 addMessage('narrator', data.narrative);
             }
 
-            // Update stats
             updateStats(data.stats);
-
-            // Update inventory
             updateInventory(data.inventory);
 
-            // Update section
             if (data.current_section) {
                 document.getElementById('section-badge').textContent = data.current_section;
             }
 
-            // Check game over
             if (data.game_over) {
                 setTimeout(() => {
                     if (data.victory) {
@@ -361,7 +420,6 @@ document.getElementById('action-form').addEventListener('submit', async function
     }
 });
 
-// Auto-scroll on load
 scrollToBottom();
 </script>
 {% endblock %}

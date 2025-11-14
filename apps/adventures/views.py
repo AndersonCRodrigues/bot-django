@@ -109,18 +109,23 @@ def start_with_character(request, pk):
             other_char = Character.find_by_id(existing_session.character_id, request.user.id)
 
             if other_char:
+                # Personagem ainda existe - não permitir nova sessão
                 messages.warning(
                     request,
                     f"Você já tem uma aventura ativa com {other_char.name}. "
                     f"Complete ou abandone antes de começar outra."
                 )
+                return redirect("game:play", session_id=existing_session.id)
             else:
-                messages.warning(
-                    request,
-                    "Você já tem uma aventura ativa. "
-                    "Complete ou abandone antes de começar outra."
+                # Personagem foi deletado - invalidar sessão antiga e continuar
+                logger.warning(
+                    f"[start_with_character] Sessão {existing_session.id} tem personagem deletado. "
+                    f"Invalidando sessão antiga."
                 )
-            return redirect("game:play", session_id=existing_session.id)
+                existing_session.status = GameSession.STATUS_DEAD
+                existing_session.save()
+                messages.info(request, "Sessão antiga foi invalidada. Criando nova aventura...")
+                # Continua para criar nova sessão abaixo
 
     # ===== CRIAR NOVA SESSÃO =====
     try:
@@ -132,7 +137,7 @@ def start_with_character(request, pk):
             character_id=character_id,
             current_section=1,
             visited_sections=[1],
-            inventory=[],
+            inventory=character.equipment.copy() if character.equipment else [],
             flags={},
             history=[],
             status=GameSession.STATUS_ACTIVE

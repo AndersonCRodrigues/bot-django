@@ -106,6 +106,13 @@ class GameSession:
             return None
 
     @classmethod
+    def find_by_user(cls, user_id: int) -> List["GameSession"]:
+        """Busca todas as sessões de um usuário"""
+        collection = cls.get_collection()
+        docs = list(collection.find({"user_id": user_id}).sort("updated_at", -1))
+        return [cls.from_dict(doc) for doc in docs]
+
+    @classmethod
     def find_active_session(
         cls, user_id: int, adventure_id: int
     ) -> Optional["GameSession"]:

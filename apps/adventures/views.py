@@ -107,11 +107,19 @@ def start_with_character(request, pk):
         else:
             # Tem sessão ativa com OUTRO personagem
             other_char = Character.find_by_id(existing_session.character_id, request.user.id)
-            messages.warning(
-                request,
-                f"Você já tem uma aventura ativa com {other_char.name}. "
-                f"Complete ou abandone antes de começar outra."
-            )
+
+            if other_char:
+                messages.warning(
+                    request,
+                    f"Você já tem uma aventura ativa com {other_char.name}. "
+                    f"Complete ou abandone antes de começar outra."
+                )
+            else:
+                messages.warning(
+                    request,
+                    "Você já tem uma aventura ativa. "
+                    "Complete ou abandone antes de começar outra."
+                )
             return redirect("game:play", session_id=existing_session.id)
 
     # ===== CRIAR NOVA SESSÃO =====

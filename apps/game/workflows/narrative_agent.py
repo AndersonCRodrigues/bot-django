@@ -56,6 +56,11 @@ Você deve criar uma experiência narrativa RICA e IMERSIVA, mas sempre RESPEITA
 Narre em 2ª pessoa (Você...).
 Use linguagem envolvente mas concisa.
 Sempre termine indicando opções ou perguntando o que jogador faz.
+
+**IMPORTANTE:**
+- NUNCA mencione números de seções/páginas como "vá para 285" ou "volte para 78"
+- Em vez disso, descreva as opções de forma narrativa: "seguir para o norte", "investigar o túnel escuro", etc.
+- O jogador NÃO precisa saber os números - apenas as escolhas narrativas
 ## CONTEXTO ATUAL
 **Personagem:** {character_name}
 **Stats:** HABILIDADE {skill} | ENERGIA {stamina}/{initial_stamina} | SORTE {luck} | OURO {gold}

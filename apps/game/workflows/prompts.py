@@ -114,6 +114,30 @@ Narre a resposta à ação do jogador seguindo o estilo Fighting Fantasy.
 Apresente 3-4 opções com marcadores (•) do que fazer a seguir.
 Use texto descritivo completo em cada opção (ex: "Testar sua HABILIDADE", "Atacar o goblin").
 Se a seção indicar combate/teste, inclua nas opções.
+
+**FORMATO DE SAÍDA:**
+Sua resposta deve terminar com um bloco JSON estruturado:
+
+```json
+{
+  "options": [
+    {"type": "navigation", "text": "Ir para o corredor da esquerda", "target": "corredor"},
+    {"type": "test_skill", "text": "Testar HABILIDADE para forçar a porta", "stat": "HABILIDADE"},
+    {"type": "examine", "text": "Examinar o baú misterioso", "target": "baú"}
+  ]
+}
+```
+
+Tipos de opção válidos:
+- navigation: mover para outro lugar
+- combat: iniciar combate
+- test_skill: teste de HABILIDADE
+- test_luck: teste de SORTE
+- pickup: pegar item
+- use_item: usar item
+- talk: conversar com NPC
+- examine: examinar algo
+- exploration: exploração geral
 """,
         ),
     ]

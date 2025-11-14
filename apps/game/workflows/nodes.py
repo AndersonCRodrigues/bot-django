@@ -24,6 +24,7 @@ from apps.game.models import GameSession
 from apps.characters.models import Character
 from apps.game.workflows.narrative_agent import RigidStructureValidator
 from apps.game.llm_client import llm_client  # 🎯 Cliente LLM global
+from apps.game.json_parser import extract_narrative_and_options, filter_valid_options
 from apps.game.narrative_templates import (
     format_combat_narrative,
     format_luck_test_narrative,
@@ -337,7 +338,17 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
         }
     )
 
-    narrative_text = response.content
+    # 🎯 STEP 6: Extrair narrativa e opções estruturadas do JSON
+    raw_response = response.content
+    narrative_text, structured_options = extract_narrative_and_options(raw_response)
+
+    # Validar e filtrar opções
+    valid_options = filter_valid_options(structured_options)
+
+    if valid_options:
+        logger.info(f"✅ {len(valid_options)} opções estruturadas extraídas")
+    else:
+        logger.warning("⚠️ Nenhuma opção estruturada encontrada. LLM pode não ter seguido o formato.")
 
     # Se ação falhou, priorizar mensagem de erro
     if action_result and not action_result['success']:
@@ -352,6 +363,7 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
         **state,
         **updates,
         "narrative_response": narrative_text,
+        "structured_options": valid_options,  # 🎯 Opções estruturadas
         "next_step": "update_state",
     }
 
@@ -506,6 +518,7 @@ def update_game_state_node(state: GameState) -> Dict[str, Any]:
             "player_action": state["player_action"],
             "action_type": state.get("action_type", "unknown"),
             "narrative": state.get("narrative_response", ""),
+            "structured_options": state.get("structured_options", []),  # 🎯 Opções estruturadas
             "stamina": state["stamina"],
             "luck": state["luck"],
             "gold": state.get("gold", 0),

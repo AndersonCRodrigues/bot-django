@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from typing import Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.rate_limiters import InMemoryRateLimiter
 from django.conf import settings
 from .state import GameState
 from .prompts import (
@@ -22,6 +23,15 @@ from apps.characters.models import Character
 from apps.game.workflows.narrative_agent import RigidStructureValidator
 
 logger = logging.getLogger("game.workflow")
+
+# 🎯 Rate limiter global para Gemini API
+# Free tier limits: 15 RPM, 1000 RPD
+# Configurado para 10 RPM (margem de segurança)
+_rate_limiter = InMemoryRateLimiter(
+    requests_per_second=10 / 60,  # 10 requests por minuto = 0.167 req/s
+    check_every_n_seconds=0.1,
+    max_bucket_size=5,  # Permite burst de até 5 requests
+)
 
 
 def _clean_section_navigation(text: str) -> str:
@@ -70,6 +80,7 @@ def get_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
         google_api_key=settings.GEMINI_API_KEY,
         temperature=temperature,
         max_output_tokens=2048,
+        rate_limiter=_rate_limiter,  # 🎯 Aplica rate limiting
     )
 
 

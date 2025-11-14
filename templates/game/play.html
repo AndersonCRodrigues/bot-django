@@ -94,21 +94,28 @@
         <!-- Área Principal do Chat -->
         <main class="flex-1 flex flex-col">
             <!-- Header -->
-            <header class="bg-[#0F0F0F] border-b border-[#27272A] px-4 sm:px-6 py-4 flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <a href="{% url 'accounts:profile' %}" class="text-[#71717A] hover:text-white transition-colors">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                        </svg>
-                    </a>
-                    <div>
-                        <h1 class="text-white font-bold text-lg">{{ adventure.title }}</h1>
-                        <p class="text-[#71717A] text-sm">{{ character.name }}</p>
-                    </div>
+            <header class="bg-[#0F0F0F] border-b border-[#27272A] px-4 sm:px-6 py-4">
+                <!-- Debug Info (remover em produção) -->
+                <div class="mb-2 p-2 bg-yellow-900/20 border border-yellow-700/30 rounded text-xs text-yellow-300">
+                    DEBUG: Session={{ session.session_id|slice:":8" }}... | History={{ history|length }} | Inventory={{ session.inventory|length }}
                 </div>
-                <button onclick="toggleMobileStats()" class="lg:hidden bg-[#0A0A0A] border border-[#27272A] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:border-[#6366F1] transition-colors">
-                    📊 Stats
-                </button>
+
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <a href="{% url 'accounts:profile' %}" class="text-[#71717A] hover:text-white transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                            </svg>
+                        </a>
+                        <div>
+                            <h1 class="text-white font-bold text-lg">{{ adventure.title }}</h1>
+                            <p class="text-[#71717A] text-sm">{{ character.name }}</p>
+                        </div>
+                    </div>
+                    <button onclick="toggleMobileStats()" class="lg:hidden bg-[#0A0A0A] border border-[#27272A] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:border-[#6366F1] transition-colors">
+                        📊 Stats
+                    </button>
+                </div>
             </header>
 
             <!-- Área de Chat com Scroll -->
@@ -265,12 +272,21 @@
 
 {% block extra_js %}
 <script>
-const sessionId = '{{ session.session_id }}';
-const csrfToken = '{{ csrf_token }}';
-const initialStamina = {{ character.initial_stamina }};
-const initialLuck = {{ character.initial_luck }};
+// Debug: verificar se script carrega
+console.log('=== GAME SCRIPT LOADING ===');
 
-console.log('Game initialized:', {sessionId, initialStamina, initialLuck});
+const sessionId = '{{ session.session_id|default:"NO_SESSION" }}';
+const csrfToken = '{{ csrf_token }}';
+const initialStamina = {{ character.initial_stamina|default:0 }};
+const initialLuck = {{ character.initial_luck|default:0 }};
+
+console.log('Game initialized:', {
+    sessionId,
+    csrfToken: csrfToken ? 'OK' : 'MISSING',
+    initialStamina,
+    initialLuck,
+    hasHistory: {{ history|length }}
+});
 
 function toggleMobileStats() {
     const modal = document.getElementById('mobile-stats-modal');

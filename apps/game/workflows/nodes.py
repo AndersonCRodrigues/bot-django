@@ -399,9 +399,24 @@ def initialize_state_node(
         session = GameSession.find_by_id(session_id, user_id)
         if not session:
             raise ValueError(f"Sessão {session_id} não encontrada")
-        character_state = get_character_state(session.character_id)
-        if "error" in character_state:
-            raise ValueError(f"Personagem não encontrado: {character_state['error']}")
+
+        # Buscar personagem diretamente
+        character = Character.find_by_id(session.character_id, user_id)
+        if not character:
+            raise ValueError(f"Personagem não encontrado")
+
+        character_state = {
+            "name": character.name,
+            "skill": character.skill,
+            "stamina": character.stamina,
+            "luck": character.luck,
+            "initial_skill": character.initial_skill,
+            "initial_stamina": character.initial_stamina,
+            "initial_luck": character.initial_luck,
+            "gold": character.gold,
+            "provisions": character.provisions,
+            "equipment": character.equipment,
+        }
         from apps.adventures.models import Adventure
 
         adventure = Adventure.objects.get(id=session.adventure_id)

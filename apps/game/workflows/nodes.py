@@ -35,7 +35,6 @@ def get_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
 def validate_action_node(state: GameState) -> Dict[str, Any]:
     logger.info(f"[validate_action_node] Validando: '{state['player_action']}'")
     player_action = state["player_action"].strip()
-
     if not player_action:
         return {
             **state,
@@ -43,8 +42,6 @@ def validate_action_node(state: GameState) -> Dict[str, Any]:
             "validation_message": "Por favor, insira uma ação.",
             "next_step": "end",
         }
-
-    # 🎯 MELHORIA 3: Validação rigorosa de estrutura
     validator = RigidStructureValidator(state["book_class_name"])
     validation_result = validator.validate_action(
         player_action=player_action,
@@ -52,7 +49,6 @@ def validate_action_node(state: GameState) -> Dict[str, Any]:
         flags=state.get("flags", {}),
         in_combat=state.get("in_combat", False),
     )
-
     if not validation_result.get("valid", False):
         return {
             **state,
@@ -62,37 +58,7 @@ def validate_action_node(state: GameState) -> Dict[str, Any]:
             ),
             "next_step": "end",
         }
-
     action_type = _detect_action_type(player_action, state)
-
-    # 🎯 MELHORIA 4: Validação de itens (whitelist)
-    if action_type == "inventory":
-        from apps.game.item_whitelist import validate_item_pickup
-        import re
-
-        # Tentar detectar se está pegando item
-        pickup_patterns = [r'peg(?:ar|o|ue)? (?:o |a |um |uma )?(\w+)', r'obter (?:o |a )?(\w+)']
-        for pattern in pickup_patterns:
-            match = re.search(pattern, player_action.lower())
-            if match:
-                item_name = match.group(1)
-                validation = validate_item_pickup(
-                    item_name,
-                    state.get("current_section", 1),
-                    state["book_class_name"]
-                )
-                if not validation["valid"]:
-                    logger.warning(
-                        f"[validate_action_node] Item '{item_name}' não permitido na seção {state.get('current_section')}"
-                    )
-                    return {
-                        **state,
-                        "action_valid": False,
-                        "validation_message": validation["error_message"],
-                        "next_step": "end",
-                    }
-                break
-
     logger.info(f"[validate_action_node] Ação válida. Tipo: {action_type}")
     return {
         **state,
@@ -135,13 +101,14 @@ def retrieve_context_node(state: GameState) -> Dict[str, Any]:
     book_class_name = state["book_class_name"]
     current_section = state["current_section"]
     action_type = state.get("action_type", "exploration")
-
     try:
-        # 🎯 MELHORIA 1: RAG k=3 com consolidação
-        query = f"seção {current_section} {state['player_action']}"
-        results = search_section(book_class_name, query, k=3)
-
-        if not results:
+        if action_type == "navigation":
+            section_data = get_section_by_number(book_class_name, current_section)
+        else:
+            query = f"seção {current_section} {state['player_action']}"
+            results = search_section(book_class_name, query, k=1)
+            section_data = results[0] if results else None
+        if not section_data:
             logger.warning(
                 f"[retrieve_context_node] Seção {current_section} não encontrada"
             )
@@ -149,40 +116,13 @@ def retrieve_context_node(state: GameState) -> Dict[str, Any]:
                 **state,
                 "section_content": f"Você está na seção {current_section}. A aventura continua...",
                 "section_metadata": {"section": current_section},
-                "auto_extracted_exits": [],
-                "auto_extracted_flags": {},
                 "next_step": "generate_narrative",
             }
-
-        # Consolidar resultados usando o extrator
-        from apps.game.rag_extractors import (
-            consolidate_rag_results,
-            extract_all_section_info
-        )
-
-        consolidated = consolidate_rag_results(results, current_section)
-        section_content = consolidated.get("content", "")
-        section_metadata = consolidated.get("metadata", {})
-
-        # 🎯 MELHORIA 2: Extração automática de informações
-        section_info = extract_all_section_info(section_content, current_section)
-
-        logger.info(
-            f"[retrieve_context_node] Contexto recuperado: "
-            f"{len(section_info['exits'])} exits, "
-            f"{len(section_info['flags'])} flags, "
-            f"{len(section_info['npcs'])} NPCs"
-        )
-
+        logger.info(f"[retrieve_context_node] Contexto recuperado com sucesso")
         return {
             **state,
-            "section_content": section_content,
-            "section_metadata": section_metadata,
-            "auto_extracted_exits": section_info["exits"],
-            "auto_extracted_flags": section_info["flags"],
-            "auto_extracted_npcs": section_info["npcs"],
-            "auto_extracted_combat": section_info["combat"],
-            "context_sections": consolidated.get("context_sections", []),
+            "section_content": section_data.get("content", ""),
+            "section_metadata": section_data.get("metadata", {}),
             "next_step": "generate_narrative",
         }
     except Exception as e:
@@ -191,8 +131,6 @@ def retrieve_context_node(state: GameState) -> Dict[str, Any]:
             **state,
             "section_content": f"Você está explorando a área...",
             "section_metadata": {},
-            "auto_extracted_exits": [],
-            "auto_extracted_flags": {},
             "next_step": "generate_narrative",
         }
 
@@ -219,123 +157,36 @@ def generate_narrative_node(state: GameState) -> Dict[str, Any]:
 
 
 def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
-    """
-    🎯 MELHORIA CRÍTICA: Agente com ToolNode!
-
-    Agora a LLM pode chamar ferramentas diretamente para:
-    - Atualizar stats (ENERGIA, SORTE, OURO)
-    - Adicionar/remover itens (validado por whitelist)
-    - Definir flags de progressão
-    """
-    from apps.game.workflows.narrative_agent_tools import (
-        get_narrative_agent_tools,
-        AGENT_NARRATIVE_PROMPT
-    )
-
-    # Preparar contexto rico
+    llm = get_llm(temperature=0.8)
+    chain = NARRATIVE_PROMPT | llm
     recent_history = _format_recent_history(state.get("history", []))
     inventory_str = ", ".join(state.get("inventory", [])) or "Vazio"
-
-    # Contexto com informações auto-extraídas
-    exits_str = ", ".join(str(e) for e in state.get("auto_extracted_exits", []))
-    flags_str = json.dumps(state.get("auto_extracted_flags", {}), indent=2)
-    npcs_str = ", ".join(state.get("auto_extracted_npcs", [])) or "Nenhum"
-    combat_str = str(state.get("auto_extracted_combat", {})) if state.get("auto_extracted_combat") else "Nenhum"
-
-    # 🎯 Criar LLM com ferramentas vinculadas
-    llm = get_llm(temperature=0.8)
-    tools = get_narrative_agent_tools()
-    llm_with_tools = llm.bind_tools(tools)
-
-    # Invocar com prompt do agente
-    chain = AGENT_NARRATIVE_PROMPT | llm_with_tools
-
-    try:
-        response = chain.invoke({
+    response = chain.invoke(
+        {
             "character_name": state["character_name"],
             "skill": state["skill"],
             "stamina": state["stamina"],
             "initial_stamina": state["initial_stamina"],
             "luck": state["luck"],
             "gold": state["gold"],
+            "provisions": state["provisions"],
             "inventory": inventory_str,
             "current_section": state["current_section"],
             "section_content": state.get("section_content", ""),
             "player_action": state["player_action"],
             "recent_history": recent_history,
-            "auto_extracted_exits": exits_str or "Nenhuma saída detectada",
-            "auto_extracted_flags": flags_str,
-            "auto_extracted_npcs": npcs_str,
-            "auto_extracted_combat": combat_str,
-        })
-
-        # Processar tool calls se houver
-        narrative_text = response.content
-        tool_calls_made = []
-
-        if hasattr(response, 'tool_calls') and response.tool_calls:
-            logger.info(f"[generate_narrative_node] Agente chamou {len(response.tool_calls)} ferramentas")
-
-            for tool_call in response.tool_calls:
-                tool_name = tool_call.get("name", "unknown")
-                tool_args = tool_call.get("args", {})
-
-                # Injetar IDs necessários nos argumentos
-                if "character_id" in tool_args and not tool_args["character_id"]:
-                    tool_args["character_id"] = state["character_id"]
-                if "session_id" in tool_args and not tool_args["session_id"]:
-                    tool_args["session_id"] = state["session_id"]
-
-                # Executar tool
-                try:
-                    tool_func = next(t for t in tools if t.name == tool_name)
-                    result = tool_func.invoke(tool_args)
-                    tool_calls_made.append({
-                        "tool": tool_name,
-                        "args": tool_args,
-                        "result": result
-                    })
-
-                    logger.info(
-                        f"[generate_narrative_node] Tool '{tool_name}' executada: {result}"
-                    )
-
-                    # Atualizar state com mudanças
-                    if tool_name == "update_stat" and result.get("success"):
-                        stat_name = result.get("stat")
-                        new_value = result.get("new_value")
-                        if stat_name == "stamina":
-                            state["stamina"] = new_value
-                        elif stat_name == "luck":
-                            state["luck"] = new_value
-                        elif stat_name == "gold":
-                            state["gold"] = new_value
-
-                except StopIteration:
-                    logger.error(f"[generate_narrative_node] Tool '{tool_name}' não encontrada")
-                except Exception as e:
-                    logger.error(f"[generate_narrative_node] Erro ao executar tool '{tool_name}': {e}")
-
-        logger.info(
-            f"[generate_narrative_node] Narrativa gerada: {len(narrative_text)} chars, "
-            f"{len(tool_calls_made)} tools executadas"
-        )
-
-        return {
-            **state,
-            "narrative_response": narrative_text,
-            "tool_calls_made": tool_calls_made,
-            "next_step": "update_state",
+            "flags": json.dumps(state.get("flags", {}), indent=2),
         }
-
-    except Exception as e:
-        logger.error(f"[generate_narrative_node] Erro no agente: {e}", exc_info=True)
-        # Fallback para narrativa simples
-        return {
-            **state,
-            "narrative_response": f"Você {state['player_action']}...",
-            "next_step": "update_state",
-        }
+    )
+    narrative_text = response.content
+    logger.info(
+        f"[generate_narrative_node] Narrativa gerada: {len(narrative_text)} chars"
+    )
+    return {
+        **state,
+        "narrative_response": narrative_text,
+        "next_step": "update_state",
+    }
 
 
 def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
@@ -611,12 +462,6 @@ def initialize_state_node(
             "history": session.history,
             "turn_number": len(session.history) + 1,
             "timestamp": datetime.utcnow().isoformat(),
-            # 🎯 Novos campos para RAG melhorado
-            "auto_extracted_exits": [],
-            "auto_extracted_flags": {},
-            "auto_extracted_npcs": [],
-            "auto_extracted_combat": {},
-            "context_sections": [],
         }
         logger.info(f"[initialize_state_node] Estado inicializado com sucesso")
         return state

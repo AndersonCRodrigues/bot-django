@@ -12,7 +12,8 @@ Uso:
 """
 
 import logging
-from typing import Any
+from typing import Any, Dict, Optional
+from langchain_core.runnables import Runnable, RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from django.conf import settings
 
@@ -21,20 +22,22 @@ logger = logging.getLogger("game.llm_client")
 
 class RateLimitedLLM:
     """
-    Wrapper que adiciona rate limiting automático a chamadas LLM.
+    Wrapper transparente que adiciona rate limiting ao LLM.
 
-    Garante que nunca excedemos 15 RPM (rate limit do Gemini free tier).
+    Delega TODOS métodos/atributos ao LLM original,
+    mas intercepta invoke() para rate limiting.
     """
 
     def __init__(self, llm: ChatGoogleGenerativeAI):
-        self._llm = llm
-        self._rate_limiter = None  # Lazy load
+        # Usa __dict__ direto para evitar __setattr__
+        object.__setattr__(self, '_llm', llm)
+        object.__setattr__(self, '_rate_limiter', None)
 
     def _get_rate_limiter(self):
         """Lazy load do rate limiter."""
         if self._rate_limiter is None:
             from apps.game.services.rate_limiter import get_llm_rate_limiter
-            self._rate_limiter = get_llm_rate_limiter()
+            object.__setattr__(self, '_rate_limiter', get_llm_rate_limiter())
         return self._rate_limiter
 
     def invoke(self, *args, **kwargs) -> Any:
@@ -74,8 +77,23 @@ class RateLimitedLLM:
         return RateLimitedLLM(bound_llm)
 
     def __getattr__(self, name):
-        """Delega outros métodos/atributos ao LLM original."""
+        """Delega TODOS outros métodos/atributos ao LLM original."""
         return getattr(self._llm, name)
+
+    def __setattr__(self, name, value):
+        """Delega setattr ao LLM original (exceto atributos internos)."""
+        if name.startswith('_'):
+            object.__setattr__(self, name, value)
+        else:
+            setattr(self._llm, name, value)
+
+    def __dir__(self):
+        """Mostra atributos do LLM original para introspecção."""
+        return dir(self._llm)
+
+    def __repr__(self):
+        """Representação mostra que é wrapper do LLM."""
+        return f"RateLimitedLLM({repr(self._llm)})"
 
 # 🎯 Instâncias globais criadas no import do módulo
 # Python garante execução única - mais simples que singleton pattern

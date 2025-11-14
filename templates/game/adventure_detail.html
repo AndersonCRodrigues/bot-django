@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ adventure.title }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 12px; padding: 40px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
+
+        <h1 style="font-size: 2.5em; color: #f59e0b; margin-bottom: 30px;">{{ adventure.title }}</h1>
+
+        {% if adventure.cover %}
+        <img src="{{ adventure.cover.url }}" alt="{{ adventure.title }}"
+             style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 8px; margin-bottom: 30px;">
+        {% endif %}
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <span style="background: #3b82f6; color: white; padding: 6px 16px; border-radius: 12px;">
+                {{ adventure.get_genre_display }}
+            </span>
+            <span style="background: #8b5cf6; color: white; padding: 6px 16px; border-radius: 12px;">
+                {{ adventure.get_difficulty_display }}
+            </span>
+        </div>
+
+        <p style="color: #cbd5e1; line-height: 1.8; font-size: 1.1em; margin-bottom: 40px;">
+            {{ adventure.description }}
+        </p>
+
+        <hr style="border: none; border-top: 2px solid #475569; margin: 40px 0;">
+
+        <h2 style="color: #f59e0b; font-size: 1.5em; margin-bottom: 20px;">Escolha seu Personagem</h2>
+
+        <!-- Opção: Criar novo personagem -->
+        <div style="background: rgba(59, 130, 246, 0.1); border: 2px solid #3b82f6; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #3b82f6; margin-bottom: 15px;">Criar Novo Herói</h3>
+            <p style="color: #cbd5e1; margin-bottom: 15px; font-size: 0.95em;">
+                Crie um personagem do zero com atributos aleatórios.
+            </p>
+            <input type="text" id="new-character-name" placeholder="Nome do personagem (opcional)"
+                   style="width: 100%; padding: 12px; background: #1e293b; border: 2px solid #475569; border-radius: 6px; color: #fff; margin-bottom: 15px;">
+            <button onclick="startGameWithNewCharacter()"
+                    style="width: 100%; padding: 15px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 1.1em; cursor: pointer; transition: all 0.3s ease;"
+                    onmouseover="this.style.transform='translateY(-2px)'"
+                    onmouseout="this.style.transform='translateY(0)'">
+                ⚔️ CRIAR E JOGAR
+            </button>
+        </div>
+
+        <!-- Personagens existentes -->
+        {% if available_characters %}
+        <div style="margin-bottom: 20px;">
+            <h3 style="color: #f59e0b; margin-bottom: 15px;">Ou escolha um personagem existente:</h3>
+
+            <div style="display: grid; gap: 15px;">
+                {% for char in available_characters %}
+                <div style="background: rgba(139, 92, 246, 0.1); border: 2px solid #8b5cf6; border-radius: 8px; padding: 20px; cursor: pointer; transition: all 0.3s ease;"
+                     onclick="startGameWithCharacter('{{ char._id }}')"
+                     onmouseover="this.style.background='rgba(139, 92, 246, 0.2)'; this.style.transform='translateX(5px)'"
+                     onmouseout="this.style.background='rgba(139, 92, 246, 0.1)'; this.style.transform='translateX(0)'">
+
+                    <h4 style="color: #8b5cf6; margin-bottom: 10px; font-size: 1.2em;">{{ char.name }}</h4>
+
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px;">
+                        <div>
+                            <div style="color: #94a3b8; font-size: 0.85em;">HABILIDADE</div>
+                            <div style="color: #fff; font-size: 1.3em; font-weight: bold;">{{ char.skill }}</div>
+                        </div>
+                        <div>
+                            <div style="color: #94a3b8; font-size: 0.85em;">ENERGIA</div>
+                            <div style="color: #fff; font-size: 1.3em; font-weight: bold;">{{ char.stamina }}</div>
+                        </div>
+                        <div>
+                            <div style="color: #94a3b8; font-size: 0.85em;">SORTE</div>
+                            <div style="color: #fff; font-size: 1.3em; font-weight: bold;">{{ char.luck }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <a href="{% url 'game:list' %}"
+           style="display: inline-block; margin-top: 30px; padding: 12px 30px; background: #475569; color: white; text-decoration: none; border-radius: 8px; transition: all 0.3s ease;"
+           onmouseover="this.style.background='#64748b'"
+           onmouseout="this.style.background='#475569'">
+            ← Voltar para aventuras
+        </a>
+    </div>
+</div>
+
+<script>
+const adventureId = {{ adventure.pk }};
+const csrfToken = '{{ csrf_token }}';
+
+function startGameWithNewCharacter() {
+    const characterName = document.getElementById('new-character-name').value || 'Aventureiro';
+
+    fetch(`/game/${adventureId}/start/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken,
+        },
+        body: `create_new=true&character_name=${encodeURIComponent(characterName)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect_url;
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erro ao iniciar jogo.');
+    });
+}
+
+function startGameWithCharacter(characterId) {
+    fetch(`/game/${adventureId}/start/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken,
+        },
+        body: `character_id=${characterId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect_url;
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erro ao iniciar jogo.');
+    });
+}
+</script>
+{% endblock %}

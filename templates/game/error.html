@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Erro{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto; padding: 60px 20px; text-align: center;">
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 12px; padding: 60px 40px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
+
+        <div style="font-size: 6em; margin-bottom: 20px;">⚠️</div>
+
+        <h1 style="font-size: 2.5em; color: #f59e0b; margin-bottom: 20px;">Ops!</h1>
+
+        <p style="font-size: 1.2em; color: #cbd5e1; line-height: 1.8; margin-bottom: 40px;">
+            {{ error_message }}
+        </p>
+
+        <a href="{% url 'game:list' %}"
+           style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; transition: all 0.3s ease;"
+           onmouseover="this.style.transform='translateY(-2px)'"
+           onmouseout="this.style.transform='translateY(0)'">
+            🏠 Voltar para Aventuras
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico - {{ adventure.title }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 12px; padding: 40px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
+
+        <h1 style="font-size: 2.5em; color: #f59e0b; margin-bottom: 10px;">📜 Histórico da Jornada</h1>
+        <h2 style="font-size: 1.5em; color: #cbd5e1; margin-bottom: 40px;">{{ adventure.title }}</h2>
+
+        <div style="margin-bottom: 30px; padding: 20px; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+            <h3 style="color: #3b82f6; margin-bottom: 15px;">Informações da Sessão</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div>
+                    <div style="color: #94a3b8; font-size: 0.9em;">Personagem</div>
+                    <div style="color: #fff; font-size: 1.2em; font-weight: bold;">{{ character.name }}</div>
+                </div>
+                <div>
+                    <div style="color: #94a3b8; font-size: 0.9em;">Total de Turnos</div>
+                    <div style="color: #fff; font-size: 1.2em; font-weight: bold;">{{ history|length }}</div>
+                </div>
+                <div>
+                    <div style="color: #94a3b8; font-size: 0.9em;">Seção Atual</div>
+                    <div style="color: #fff; font-size: 1.2em; font-weight: bold;">{{ session.current_section }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="max-height: 600px; overflow-y: auto; padding-right: 10px;">
+            {% for entry in history %}
+            <div style="margin: 20px 0; padding: 20px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border-left: 4px solid #3b82f6;">
+                <div style="color: #94a3b8; font-size: 0.85em; margin-bottom: 10px;">
+                    Turno {{ entry.turn }} - Seção {{ entry.section }}
+                </div>
+
+                {% if entry.player_action %}
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: #3b82f6;">Você:</strong>
+                    <p style="color: #cbd5e1; margin-left: 20px; margin-top: 5px;">{{ entry.player_action }}</p>
+                </div>
+                {% endif %}
+
+                {% if entry.narrative %}
+                <div>
+                    <strong style="color: #f59e0b;">Narrador:</strong>
+                    <p style="color: #cbd5e1; margin-left: 20px; margin-top: 5px; line-height: 1.6;">{{ entry.narrative }}</p>
+                </div>
+                {% endif %}
+
+                <div style="margin-top: 15px; display: flex; gap: 20px; font-size: 0.9em;">
+                    <span style="color: #10b981;">⚡ {{ entry.stamina }} Energia</span>
+                    <span style="color: #8b5cf6;">🍀 {{ entry.luck }} Sorte</span>
+                    <span style="color: #f59e0b;">💰 {{ entry.gold }} Ouro</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="margin-top: 30px; display: flex; gap: 15px;">
+            <a href="{% url 'game:play' session.session_id %}"
+               style="padding: 12px 30px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; text-decoration: none; border-radius: 8px; font-weight: bold;"
+               onmouseover="this.style.transform='translateY(-2px)'"
+               onmouseout="this.style.transform='translateY(0)'">
+                ← Voltar ao Jogo
+            </a>
+
+            <a href="{% url 'game:list' %}"
+               style="padding: 12px 30px; background: #475569; color: white; text-decoration: none; border-radius: 8px;"
+               onmouseover="this.style.background='#64748b'"
+               onmouseout="this.style.background='#475569'">
+                🏠 Aventuras
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

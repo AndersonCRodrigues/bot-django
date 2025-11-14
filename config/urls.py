@@ -17,6 +17,7 @@ urlpatterns = [
     path("", include("apps.accounts.urls")),
     path("adventures/", include("apps.adventures.urls")),
     path("characters/", include("apps.characters.urls")),
+    path("game/", include("apps.game.urls")),  # Rotas do jogo RPG
     path("admin/", admin.site.urls),
 ]
 

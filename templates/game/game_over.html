@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Fim de Jogo{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto; padding: 60px 20px; text-align: center;">
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 12px; padding: 60px 40px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
+
+        {% if victory %}
+            <div style="font-size: 8em; margin-bottom: 20px;">🏆</div>
+            <h1 style="font-size: 3em; color: #10b981; margin-bottom: 20px; text-shadow: 2px 2px 8px rgba(16, 185, 129, 0.3);">
+                VITÓRIA!
+            </h1>
+            <p style="font-size: 1.3em; color: #cbd5e1; line-height: 1.8; margin-bottom: 40px;">
+                Parabéns! Você completou a aventura com sucesso!<br>
+                Sua coragem e sagacidade foram recompensadas.
+            </p>
+        {% else %}
+            <div style="font-size: 8em; margin-bottom: 20px;">💀</div>
+            <h1 style="font-size: 3em; color: #ef4444; margin-bottom: 20px; text-shadow: 2px 2px 8px rgba(239, 68, 68, 0.3);">
+                GAME OVER
+            </h1>
+            <p style="font-size: 1.3em; color: #cbd5e1; line-height: 1.8; margin-bottom: 40px;">
+                Sua jornada chegou ao fim...<br>
+                Mas todo grande herói já enfrentou a derrota antes da vitória.
+            </p>
+        {% endif %}
+
+        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 30px; margin-bottom: 40px;">
+            <h3 style="color: #f59e0b; margin-bottom: 20px;">Estatísticas Finais</h3>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; text-align: center;">
+                <div>
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 5px;">TURNOS JOGADOS</div>
+                    <div style="color: #fff; font-size: 2em; font-weight: bold;">{{ session.history|length }}</div>
+                </div>
+                <div>
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 5px;">SEÇÃO FINAL</div>
+                    <div style="color: #fff; font-size: 2em; font-weight: bold;">{{ session.current_section }}</div>
+                </div>
+                <div>
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 5px;">ITENS COLETADOS</div>
+                    <div style="color: #fff; font-size: 2em; font-weight: bold;">{{ session.inventory|length }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+            <a href="{% url 'game:detail' session.adventure_id %}"
+               style="padding: 15px 30px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; transition: all 0.3s ease; display: inline-block;"
+               onmouseover="this.style.transform='translateY(-2px)'"
+               onmouseout="this.style.transform='translateY(0)'">
+                🔄 JOGAR NOVAMENTE
+            </a>
+
+            <a href="{% url 'game:history' session.session_id %}"
+               style="padding: 15px 30px; background: #475569; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; transition: all 0.3s ease; display: inline-block;"
+               onmouseover="this.style.background='#64748b'"
+               onmouseout="this.style.background='#475569'">
+                📜 VER HISTÓRICO
+            </a>
+
+            <a href="{% url 'game:list' %}"
+               style="padding: 15px 30px; background: #1e293b; border: 2px solid #475569; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; transition: all 0.3s ease; display: inline-block;"
+               onmouseover="this.style.borderColor='#64748b'"
+               onmouseout="this.style.borderColor='#475569'">
+                🏠 AVENTURAS
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

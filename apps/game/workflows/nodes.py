@@ -24,6 +24,19 @@ from apps.game.models import GameSession
 from apps.characters.models import Character
 from apps.game.workflows.narrative_agent import RigidStructureValidator
 from apps.game.llm_client import llm_client  # 🎯 Cliente LLM global
+from apps.game.narrative_templates import (
+    format_combat_narrative,
+    format_luck_test_narrative,
+    format_skill_test_narrative,
+)
+from apps.game.action_parser import parse_player_action
+from apps.game.action_validators import (
+    validate_pickup_item,
+    validate_use_item,
+    validate_navigation,
+    validate_talk_to_npc,
+)
+from apps.game.rag_extractors import extract_all_section_info
 
 logger = logging.getLogger("game.workflow")
 

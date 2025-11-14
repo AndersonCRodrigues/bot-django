@@ -25,8 +25,8 @@ logger = logging.getLogger("game.workflow")
 
 def get_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
     return ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        google_api_key=settings.GEMINI_API_KEY,
+        model="gemini-2.0-flash-lite",
+        google_api_key=settings.GOOGLE_API_KEY,
         temperature=temperature,
         max_output_tokens=2048,
     )

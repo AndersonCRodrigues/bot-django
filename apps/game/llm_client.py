@@ -44,12 +44,25 @@ class RateLimitedLLM:
         Aguarda automaticamente se necessário para não exceder 15 RPM.
         """
         rate_limiter = self._get_rate_limiter()
+
+        # 📊 Log de uso antes da chamada
+        usage = rate_limiter.get_current_usage()
+        logger.info(
+            f"🔵 LLM CALL INICIADA - "
+            f"Uso atual: {usage['requests_in_window']}/{usage['max_requests']} "
+            f"(restam {usage['remaining']} na janela de 60s)"
+        )
+
         wait_time = rate_limiter.acquire()
 
         if wait_time > 0:
-            logger.info(f"⏳ Aguardou {wait_time:.1f}s pelo rate limit")
+            logger.warning(f"⏳ Aguardou {wait_time:.1f}s pelo rate limit")
 
-        return self._llm.invoke(*args, **kwargs)
+        result = self._llm.invoke(*args, **kwargs)
+
+        logger.info(f"✅ LLM CALL CONCLUÍDA")
+
+        return result
 
     def bind_tools(self, tools):
         """

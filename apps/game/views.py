@@ -315,12 +315,17 @@ def process_action(request, session_id):
             result['adventure_title'] = adventure.title
 
             # Track API usage
-            UsageTracker.track_api_call(
-                user_id=request.user.id,
-                api_name='gemini_narrative',
-                tokens_used=len(result.get('narrative', '')) // 4,  # Estimativa
-                cost=0.0001,  # Estimativa
-            )
+            try:
+                UsageTracker.track_simple(
+                    user=request.user,
+                    tokens_input=len(player_action) // 4,  # Estimativa
+                    tokens_output=len(result.get('narrative', '')) // 4,  # Estimativa
+                    adventure_id=session.adventure_id,
+                    session_id=session_id,
+                    operation_type='narrate',
+                )
+            except Exception as e:
+                logger.warning(f"Erro ao rastrear usage: {e}")
 
         logger.info(f"[process_action] Resultado: success={result['success']}, "
                    f"game_over={result['game_over']}, turn={result['turn_number']}")

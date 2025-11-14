@@ -212,9 +212,9 @@ def generate_hybrid_narrative(
     inventory_str = ", ".join(inventory) if inventory else "Vazio"
     flags_str = str(flags) if flags else "{}"
 
-    # 🎯 Usar instância singleton do LLM
-    from apps.game.llm_client import get_shared_llm
-    llm = get_shared_llm(temperature=0.8)
+    # 🎯 Usar cliente LLM global
+    from apps.game.llm_client import llm_client
+    llm = llm_client
     chain = HYBRID_NARRATIVE_PROMPT | llm
     response = chain.invoke(
         {

@@ -19,7 +19,7 @@ from apps.game.tools.character import update_character_stats, get_character_stat
 from apps.game.models import GameSession
 from apps.characters.models import Character
 from apps.game.workflows.narrative_agent import RigidStructureValidator
-from apps.game.llm_client import get_shared_llm  # 🎯 Singleton LLM
+from apps.game.llm_client import llm_client  # 🎯 Cliente LLM global
 
 logger = logging.getLogger("game.workflow")
 
@@ -66,12 +66,12 @@ def _clean_section_navigation(text: str) -> str:
 
 def get_llm(temperature: float = 0.7):
     """
-    🎯 Retorna instância compartilhada do LLM.
+    🎯 Retorna cliente LLM global.
 
-    IMPORTANTE: Agora usa singleton para evitar múltiplas instâncias
-    e resolver erro 429.
+    IMPORTANTE: Sempre retorna a MESMA instância global.
+    Temperatura é fixa em 0.7 (configurada no llm_client).
     """
-    return get_shared_llm(temperature=temperature)
+    return llm_client
 
 
 def validate_action_node(state: GameState) -> Dict[str, Any]:

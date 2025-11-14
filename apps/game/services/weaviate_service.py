@@ -45,13 +45,12 @@ def get_weaviate_client():
 
 def get_embedding_model():
     """
-    🎯 Retorna instância singleton de GoogleGenerativeAIEmbeddings.
+    🎯 Retorna cliente de embeddings global.
 
-    IMPORTANTE: Agora usa singleton para evitar múltiplas instâncias
-    e resolver erro 429.
+    IMPORTANTE: Sempre retorna a MESMA instância global.
     """
-    from apps.game.llm_client import get_shared_embeddings
-    return get_shared_embeddings()
+    from apps.game.llm_client import embedding_client
+    return embedding_client
 
 
 def create_vector_store(class_name: str) -> Optional[WeaviateVectorStore]:

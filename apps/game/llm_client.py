@@ -1,19 +1,14 @@
 """
-🎯 Cliente LLM Singleton - Instância única compartilhada
+🎯 Cliente LLM Global - Instância única compartilhada
 
-Resolve problema de múltiplas instâncias causando erro 429.
+Padrão module-level singleton (como código de referência).
 
-Antes:
-- Cada get_llm() criava nova instância
-- narrative_agent.py criava sua própria instância
-- embeddings criava sua própria instância
-= múltiplas conexões HTTP, overhead, 429
+Instâncias criadas UMA VEZ quando módulo é importado.
+Todos os imports compartilham as MESMAS instâncias.
 
-Depois:
-- UMA instância global de ChatGoogleGenerativeAI
-- UMA instância global de GoogleGenerativeAIEmbeddings
-- Todos os módulos compartilham as mesmas instâncias
-= 1 conexão, menos overhead, sem 429
+Uso:
+    from apps.game.llm_client import llm_client, embedding_client
+    response = llm_client.invoke(...)
 """
 
 import logging
@@ -22,68 +17,19 @@ from django.conf import settings
 
 logger = logging.getLogger("game.llm_client")
 
-# 🎯 Instâncias singleton globais
-_llm_instance = None
-_embeddings_instance = None
+# 🎯 Instâncias globais criadas no import do módulo
+# Python garante execução única - mais simples que singleton pattern
 
+logger.info("[LLM Client] Criando instância global de ChatGoogleGenerativeAI")
+llm_client = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash-lite",
+    google_api_key=settings.GEMINI_API_KEY,
+    temperature=0.7,
+    max_output_tokens=2048,
+)
 
-def get_shared_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
-    """
-    Retorna instância ÚNICA e compartilhada do ChatGoogleGenerativeAI.
-
-    Todas as chamadas retornam a MESMA instância, reduzindo overhead
-    e evitando múltiplas conexões simultâneas.
-
-    Args:
-        temperature: Temperatura para geração (padrão 0.7)
-
-    Returns:
-        Instância singleton de ChatGoogleGenerativeAI
-    """
-    global _llm_instance
-
-    if _llm_instance is None:
-        logger.info("[LLM Client] Criando instância singleton de ChatGoogleGenerativeAI")
-        _llm_instance = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-lite",
-            google_api_key=settings.GEMINI_API_KEY,
-            temperature=temperature,
-            max_output_tokens=2048,
-        )
-
-    return _llm_instance
-
-
-def get_shared_embeddings() -> GoogleGenerativeAIEmbeddings:
-    """
-    Retorna instância ÚNICA e compartilhada do GoogleGenerativeAIEmbeddings.
-
-    Todas as chamadas retornam a MESMA instância, reduzindo overhead
-    e evitando múltiplas conexões simultâneas ao embedding API.
-
-    Returns:
-        Instância singleton de GoogleGenerativeAIEmbeddings
-    """
-    global _embeddings_instance
-
-    if _embeddings_instance is None:
-        logger.info("[LLM Client] Criando instância singleton de GoogleGenerativeAIEmbeddings")
-        _embeddings_instance = GoogleGenerativeAIEmbeddings(
-            model="models/text-embedding-004",
-            google_api_key=settings.GEMINI_API_KEY,
-        )
-
-    return _embeddings_instance
-
-
-def reset_clients():
-    """
-    Reset das instâncias singleton (útil para testes).
-
-    ATENÇÃO: Só use em testes ou quando necessário reconfigurar.
-    """
-    global _llm_instance, _embeddings_instance
-
-    logger.warning("[LLM Client] Resetando instâncias singleton")
-    _llm_instance = None
-    _embeddings_instance = None
+logger.info("[LLM Client] Criando instância global de GoogleGenerativeAIEmbeddings")
+embedding_client = GoogleGenerativeAIEmbeddings(
+    model="models/text-embedding-004",
+    google_api_key=settings.GEMINI_API_KEY,
+)

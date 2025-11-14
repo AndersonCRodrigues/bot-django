@@ -55,7 +55,16 @@ def select_character(request, pk):
 @login_required
 def start_with_character(request, pk):
     """Inicia sessão com personagem selecionado"""
+    from apps.game.models import GameSession
+    import logging
+
+    logger = logging.getLogger("adventures")
     adventure = get_object_or_404(Adventure, pk=pk, is_published=True)
+
+    # Verificar se aventura tem livro processado
+    if not hasattr(adventure, 'processed_book'):
+        messages.error(request, "Esta aventura ainda não está disponível para jogar.")
+        return redirect("adventures:list")
 
     # Aceitar character_id via POST ou GET
     if request.method == "POST":
@@ -78,9 +87,58 @@ def start_with_character(request, pk):
         messages.error(request, f"{character.name} não foi criado para esta aventura.")
         return redirect("adventures:select_character", pk=pk)
 
-    # TODO: Criar sessão de jogo quando implementar o app game
-    messages.success(request, f"Pronto para começar a aventura com {character.name}!")
+    # ===== VERIFICAR STATUS DO PERSONAGEM =====
+    if character.stamina <= 0:
+        messages.error(
+            request,
+            f"💀 {character.name} está morto (ENERGIA = 0). Crie um novo personagem para jogar."
+        )
+        return redirect("adventures:select_character", pk=pk)
 
-    # Por enquanto, redireciona de volta para aventuras
-    # Quando criar o app game, vai redirecionar para: redirect('game:play', session_id=session.id)
-    return redirect("adventures:list")
+    # ===== VERIFICAR SESSÃO EXISTENTE =====
+    existing_session = GameSession.find_active_session(request.user.id, pk)
+
+    if existing_session:
+        # Verificar se é do mesmo personagem
+        if existing_session.character_id == character_id:
+            # Continuar sessão existente
+            messages.info(request, f"Continuando aventura com {character.name}...")
+            return redirect("game:play", session_id=existing_session.id)
+        else:
+            # Tem sessão ativa com OUTRO personagem
+            other_char = Character.find_by_id(existing_session.character_id, request.user.id)
+            messages.warning(
+                request,
+                f"Você já tem uma aventura ativa com {other_char.name}. "
+                f"Complete ou abandone antes de começar outra."
+            )
+            return redirect("game:play", session_id=existing_session.id)
+
+    # ===== CRIAR NOVA SESSÃO =====
+    try:
+        session = GameSession(
+            user_id=request.user.id,
+            adventure_id=pk,
+            character_id=character_id,
+            current_section=1,
+            visited_sections=[1],
+            inventory=[],
+            flags={},
+            history=[],
+            status=GameSession.STATUS_ACTIVE
+        )
+        session.save()
+
+        logger.info(f"Nova sessão criada: {session.id} - User: {request.user.id}, Character: {character.name}")
+
+        messages.success(
+            request,
+            f"🎮 Começando aventura '{adventure.title}' com {character.name}!"
+        )
+
+        return redirect("game:play", session_id=session.id)
+
+    except Exception as e:
+        logger.error(f"Erro ao criar sessão: {e}", exc_info=True)
+        messages.error(request, f"Erro ao iniciar jogo: {str(e)}")
+        return redirect("adventures:select_character", pk=pk)

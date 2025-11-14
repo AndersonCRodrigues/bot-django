@@ -223,42 +223,50 @@ def generate_narrative_node(state: GameState) -> Dict[str, Any]:
 
 def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
     """Gera narrativa geral (exploração, diálogo, etc)."""
-    llm = get_llm(temperature=0.8)
-    chain = NARRATIVE_PROMPT | llm
+    # USAR AGENTE NARRATIVO HÍBRIDO!
+    from apps.game.workflows.narrative_agent import generate_hybrid_narrative
 
     # Formatar histórico recente
     recent_history = _format_recent_history(state.get("history", []))
 
     # Formatar inventário
-    inventory_str = ", ".join(state.get("inventory", [])) or "Vazio"
+    inventory_list = state.get("inventory", [])
 
-    response = chain.invoke(
-        {
-            "character_name": state["character_name"],
-            "skill": state["skill"],
-            "stamina": state["stamina"],
-            "initial_stamina": state["initial_stamina"],
-            "luck": state["luck"],
-            "gold": state["gold"],
-            "provisions": state["provisions"],
-            "inventory": inventory_str,
-            "current_section": state["current_section"],
-            "section_content": state.get("section_content", ""),
-            "player_action": state["player_action"],
-            "recent_history": recent_history,
-            "flags": json.dumps(state.get("flags", {}), indent=2),
+    try:
+        # Gerar narrativa através do agente híbrido (liberdade + estrutura)
+        narrative_text = generate_hybrid_narrative(
+            player_action=state["player_action"],
+            character_name=state["character_name"],
+            skill=state["skill"],
+            stamina=state["stamina"],
+            initial_stamina=state["initial_stamina"],
+            luck=state["luck"],
+            gold=state.get("gold", 0),
+            inventory=inventory_list,
+            current_section=state["current_section"],
+            section_content=state.get("section_content", ""),
+            recent_history=recent_history,
+            flags=state.get("flags", {}),
+            book_class_name=state.get("book_class_name", ""),
+            in_combat=state.get("in_combat", False)
+        )
+
+        logger.info(f"[generate_narrative_node] Narrativa híbrida gerada: {len(narrative_text)} chars")
+
+        return {
+            **state,
+            "narrative_response": narrative_text,
+            "next_step": "update_state",
         }
-    )
 
-    narrative_text = response.content
-
-    logger.info(f"[generate_narrative_node] Narrativa gerada: {len(narrative_text)} chars")
-
-    return {
-        **state,
-        "narrative_response": narrative_text,
-        "next_step": "update_state",
-    }
+    except Exception as e:
+        logger.error(f"[generate_narrative_node] Erro no agente híbrido: {e}", exc_info=True)
+        # Fallback para narrativa simples
+        return {
+            **state,
+            "narrative_response": f"Você {state['player_action']}. A aventura continua...",
+            "next_step": "update_state",
+        }
 
 
 def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
@@ -471,9 +479,22 @@ def update_game_state_node(state: GameState) -> Dict[str, Any]:
 
         logger.info(f"[update_game_state_node] Estado persistido com sucesso")
 
+        # ===== VERIFICAR ACHIEVEMENTS =====
+        from apps.game.achievements import check_achievements
+
+        character = Character.find_by_id(state["character_id"], state["user_id"])
+        newly_unlocked = check_achievements(state["user_id"], session, character)
+
+        # Armazenar achievements desbloqueados no state para enviar ao cliente
+        achievements_unlocked = [ach.to_dict() for ach in newly_unlocked]
+
+        if achievements_unlocked:
+            logger.info(f"[update_game_state_node] {len(achievements_unlocked)} achievements desbloqueados!")
+
         return {
             **state,
             "turn_number": state.get("turn_number", 0) + 1,
+            "achievements_unlocked": achievements_unlocked,  # Novos achievements
             "next_step": "check_game_over",
         }
 

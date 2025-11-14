@@ -188,7 +188,31 @@ def process_game_action(session_id: str, user_id: int, player_action: str) -> Di
         # 3. Executar workflow
         final_state = app.invoke(initial_state)
 
-        # 4. Montar resposta
+        # 4. Montar resposta COM ACHIEVEMENTS E ÁUDIO
+        from apps.game.audio_manager import get_section_audio, trigger_audio_event, AudioEvent
+
+        # Determinar áudio baseado em eventos
+        audio_commands = []
+
+        # Áudio de ambiente baseado na seção
+        section_content = final_state.get("section_content", "")
+        if section_content:
+            audio_commands.extend(get_section_audio(section_content))
+
+        # Áudio baseado em eventos
+        if final_state.get("in_combat"):
+            audio_commands.append(trigger_audio_event(AudioEvent.COMBAT_START))
+
+        if final_state.get("game_over"):
+            audio_commands.append(trigger_audio_event(AudioEvent.GAME_OVER))
+        elif final_state.get("victory"):
+            audio_commands.append(trigger_audio_event(AudioEvent.VICTORY))
+
+        # Achievements desbloqueados
+        achievements = final_state.get("achievements_unlocked", [])
+        if achievements:
+            audio_commands.append(trigger_audio_event(AudioEvent.ACHIEVEMENT_UNLOCK))
+
         result = {
             "success": not bool(final_state.get("error")),
             "narrative": final_state.get("narrative_response", ""),
@@ -206,6 +230,8 @@ def process_game_action(session_id: str, user_id: int, player_action: str) -> Di
             "current_section": final_state.get("current_section", 1),
             "in_combat": final_state.get("in_combat", False),
             "turn_number": final_state.get("turn_number", 0),
+            "achievements": achievements,  # Achievements desbloqueados
+            "audio": audio_commands,  # Comandos de áudio
         }
 
         logger.info(

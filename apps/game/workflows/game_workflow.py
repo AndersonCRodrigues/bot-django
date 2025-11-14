@@ -104,6 +104,32 @@ def process_game_action(
         initial_state = initialize_state_node(session_id, user_id, player_action)
         app = create_game_workflow()
         final_state = app.invoke(initial_state)
+        # Determinar ações disponíveis baseado no estado
+        available_actions = []
+        combat_data = final_state.get("combat_data")
+
+        if final_state.get("in_combat") and combat_data:
+            # Em combate: mostrar botão de atacar
+            available_actions.append({
+                "type": "attack",
+                "label": "⚔️ Atacar",
+                "icon": "⚔️"
+            })
+
+        # Se última ação foi combate e há awaiting_luck_test, oferecer teste de sorte
+        if final_state.get("awaiting_luck_test"):
+            available_actions.append({
+                "type": "test_luck",
+                "label": "🎲 Testar Sorte",
+                "icon": "🎲",
+                "context": final_state.get("luck_test_context", "damage")
+            })
+            available_actions.append({
+                "type": "skip_luck",
+                "label": "⏭️ Pular",
+                "icon": "⏭️"
+            })
+
         result = {
             "success": not bool(final_state.get("error")),
             "narrative": final_state.get("narrative_response", ""),
@@ -120,9 +146,12 @@ def process_game_action(
             "inventory": final_state.get("inventory", []),
             "current_section": final_state.get("current_section", 1),
             "in_combat": final_state.get("in_combat", False),
+            "combat_data": combat_data,
             "turn_number": final_state.get("turn_number", 0),
             "achievements": final_state.get("achievements_unlocked", []),
             "audio": final_state.get("audio_commands", []),
+            "available_actions": available_actions,
+            "dice_roll": final_state.get("last_dice_roll"),  # Para animação
         }
         logger.info(
             f"[process_game_action] Ação processada com sucesso. "

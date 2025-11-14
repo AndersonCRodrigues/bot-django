@@ -1,9 +1,7 @@
 from typing import Dict, Optional
-from langchain_core.tools import tool
-from .dice import roll_dice
+from .dice import roll_dice, check_luck
 
 
-@tool
 def combat_round(
     character_skill: int,
     character_stamina: int,
@@ -85,7 +83,66 @@ def combat_round(
     }
 
 
-@tool
+def apply_luck_to_damage(
+    damage_type: str,  # "dealt" ou "received"
+    base_damage: int,
+    character_luck: int,
+) -> dict:
+    """
+    Aplica teste de sorte ao dano conforme regras Fighting Fantasy.
+
+    Args:
+        damage_type: "dealt" (você causou dano) ou "received" (você recebeu dano)
+        base_damage: Dano base (normalmente 2)
+        character_luck: Sorte atual do personagem
+
+    Returns:
+        dict: {
+            'test_result': dict (do check_luck),
+            'original_damage': int,
+            'final_damage': int,
+            'luck_applied': bool,
+            'message': str
+        }
+
+    Regras Fighting Fantasy:
+    - Se você CAUSOU dano:
+        - Sucesso: +2 dano extra (total 4)
+        - Falha: -1 dano (total 1)
+    - Se você RECEBEU dano:
+        - Sucesso: -1 dano (total 1)
+        - Falha: +1 dano extra (total 3)
+    """
+    test_result = check_luck(character_luck)
+    success = test_result["success"]
+
+    if damage_type == "dealt":
+        # Você causou dano
+        if success:
+            final_damage = base_damage + 2  # 2 → 4
+            msg = f"✨ Sorte! Dano aumentado: {base_damage} → {final_damage}"
+        else:
+            final_damage = max(1, base_damage - 1)  # 2 → 1
+            msg = f"😞 Sem sorte! Dano reduzido: {base_damage} → {final_damage}"
+    else:
+        # Você recebeu dano
+        if success:
+            final_damage = max(1, base_damage - 1)  # 2 → 1
+            msg = f"✨ Sorte! Dano reduzido: {base_damage} → {final_damage}"
+        else:
+            final_damage = base_damage + 1  # 2 → 3
+            msg = f"😞 Sem sorte! Dano aumentado: {base_damage} → {final_damage}"
+
+    return {
+        "test_result": test_result,
+        "original_damage": base_damage,
+        "final_damage": final_damage,
+        "luck_applied": True,
+        "new_luck": test_result["new_luck"],
+        "message": msg
+    }
+
+
 def start_combat(enemy_name: str, enemy_skill: int, enemy_stamina: int) -> dict:
     """
     Inicia um combate com um inimigo.

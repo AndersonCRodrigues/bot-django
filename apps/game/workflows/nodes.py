@@ -1,5 +1,6 @@
 import logging
 import json
+import re
 from datetime import datetime
 from typing import Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -21,6 +22,46 @@ from apps.characters.models import Character
 from apps.game.workflows.narrative_agent import RigidStructureValidator
 
 logger = logging.getLogger("game.workflow")
+
+
+def _clean_section_navigation(text: str) -> str:
+    """
+    Remove referências de navegação (números de seções) do texto do RAG.
+
+    Remove padrões como:
+    - "vá para 74"
+    - "(seção 42)"
+    - "volte para 15"
+    - "passe para o 200"
+
+    Mantém o resto da narrativa intacta.
+    """
+    if not text:
+        return text
+
+    # Padrões de navegação a remover
+    patterns = [
+        r'\(vá para (?:a seção )?(\d+)\)',
+        r'\(volte para (?:a seção )?(\d+)\)',
+        r'\(seção (\d+)\)',
+        r'\(passe para (?:o |a seção )?(\d+)\)',
+        r'\(retorne (?:para |à seção )?(\d+)\)',
+        r'vá para (?:a seção )?(\d+)',
+        r'volte para (?:a seção )?(\d+)',
+        r'passe para (?:o |a seção )?(\d+)',
+        r'retorne (?:para |à seção )?(\d+)',
+    ]
+
+    cleaned = text
+    for pattern in patterns:
+        cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
+
+    # Limpar espaços duplos e pontuação órfã resultantes
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    cleaned = re.sub(r'\s+\.', '.', cleaned)
+    cleaned = re.sub(r'\s+,', ',', cleaned)
+
+    return cleaned.strip()
 
 
 def get_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
@@ -118,10 +159,15 @@ def retrieve_context_node(state: GameState) -> Dict[str, Any]:
                 "section_metadata": {"section": current_section},
                 "next_step": "generate_narrative",
             }
-        logger.info(f"[retrieve_context_node] Contexto recuperado com sucesso")
+
+        # 🎯 MELHORIA: Limpar referências de navegação do RAG
+        raw_content = section_data.get("content", "")
+        cleaned_content = _clean_section_navigation(raw_content)
+
+        logger.info(f"[retrieve_context_node] Contexto recuperado e limpo com sucesso")
         return {
             **state,
-            "section_content": section_data.get("content", ""),
+            "section_content": cleaned_content,
             "section_metadata": section_data.get("metadata", {}),
             "next_step": "generate_narrative",
         }

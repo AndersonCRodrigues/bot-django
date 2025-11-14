@@ -211,7 +211,7 @@ def generate_hybrid_narrative(
 
     llm = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash",
-        google_api_key=settings.GOOGLE_API_KEY,
+        google_api_key=settings.GEMINI_API_KEY,
         temperature=0.8,
         max_output_tokens=1024,
     )

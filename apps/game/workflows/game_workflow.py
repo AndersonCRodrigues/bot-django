@@ -121,6 +121,8 @@ def process_game_action(
             "current_section": final_state.get("current_section", 1),
             "in_combat": final_state.get("in_combat", False),
             "turn_number": final_state.get("turn_number", 0),
+            "achievements": achievements,  # Achievements desbloqueados
+            "audio": audio_commands,  # Comandos de áudio
         }
         logger.info(
             f"[process_game_action] Ação processada com sucesso. "

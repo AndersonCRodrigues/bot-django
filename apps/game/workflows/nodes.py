@@ -356,6 +356,7 @@ def update_game_state_node(state: GameState) -> Dict[str, Any]:
         return {
             **state,
             "turn_number": state.get("turn_number", 0) + 1,
+            "achievements_unlocked": achievements_unlocked,  # Novos achievements
             "next_step": "check_game_over",
         }
     except Exception as e:

@@ -124,6 +124,8 @@ def start_with_character(request, pk):
 
     # ===== CRIAR NOVA SESSÃO =====
     try:
+        logger.info(f"[start_with_character] Criando sessão: user_id={request.user.id}, adventure_id={pk}, character_id={character_id}")
+
         session = GameSession(
             user_id=request.user.id,
             adventure_id=pk,
@@ -137,7 +139,7 @@ def start_with_character(request, pk):
         )
         session.save()
 
-        logger.info(f"Nova sessão criada: {session.id} - User: {request.user.id}, Character: {character.name}")
+        logger.info(f"Nova sessão criada: {session.id} - User: {request.user.id}, Character ID: {character_id}, Character Name: {character.name}")
 
         messages.success(
             request,

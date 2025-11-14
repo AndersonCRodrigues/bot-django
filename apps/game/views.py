@@ -207,9 +207,11 @@ def play_game(request, session_id):
             })
 
         # Buscar personagem
+        logger.info(f"[play_game] Buscando personagem: character_id={session.character_id}, user_id={request.user.id}")
         character = Character.find_by_id(session.character_id, request.user.id)
 
         if not character:
+            logger.error(f"[play_game] PERSONAGEM NÃO ENCONTRADO! character_id={session.character_id}, user_id={request.user.id}")
             return render(request, 'game/error.html', {
                 'error_message': 'Personagem não encontrado.',
                 'page_title': 'Erro',

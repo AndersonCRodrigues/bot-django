@@ -188,13 +188,24 @@ class Character:
     @classmethod
     def find_by_id(cls, character_id: str, user_id: int) -> Optional["Character"]:
         """Busca personagem por ID (síncrono)"""
+        import logging
+        logger = logging.getLogger("game.character")
+
         try:
+            logger.info(f"[Character.find_by_id] Buscando character_id={character_id}, user_id={user_id}")
             collection = cls.get_collection()
             doc = collection.find_one(
                 {"_id": ObjectId(character_id), "user_id": user_id}
             )
-            return cls.from_dict(doc) if doc else None
-        except:
+
+            if doc:
+                logger.info(f"[Character.find_by_id] Personagem encontrado: {doc.get('name')}")
+                return cls.from_dict(doc)
+            else:
+                logger.warning(f"[Character.find_by_id] Personagem NÃO encontrado para character_id={character_id}, user_id={user_id}")
+                return None
+        except Exception as e:
+            logger.error(f"[Character.find_by_id] ERRO ao buscar personagem: {e}", exc_info=True)
             return None
 
     def save(self):

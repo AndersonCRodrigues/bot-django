@@ -238,10 +238,11 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
     parsed_action = parse_player_action(player_action)
     action_type = parsed_action['type']
     action_target = parsed_action.get('target')
+    target_section = parsed_action.get('section')  # Para navegação
 
-    logger.info(f"[general_narrative] Ação parseada: {action_type} (target: {action_target})")
+    logger.info(f"[general_narrative] Ação parseada: {action_type} (target: {action_target}, section: {target_section})")
 
-    # 🎯 STEP 2: Extrair informações do RAG
+    # 🎯 STEP 2: Extrair informações do RAG ATUAL (antes de mudar seção)
     section_info = extract_all_section_info(section_content, current_section)
     available_items = section_info.get('items', [])
     available_exits = section_info.get('exits', [])
@@ -251,6 +252,50 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
         f"[general_narrative] RAG info: {len(available_items)} items, "
         f"{len(available_exits)} exits, {len(available_npcs)} NPCs"
     )
+
+    # 🎯 STEP 2.5: Se for navegação com seção, atualizar current_section AGORA
+    if action_type == 'navigation' and target_section:
+        logger.info(f"[general_narrative] 🗺️ Navegação detectada: {current_section} → {target_section}")
+
+        # Validar navegação
+        validation = validate_navigation(target_section, available_exits, inventory)
+
+        if not validation.valid:
+            logger.warning(f"[general_narrative] ✗ Navegação bloqueada: {validation.message}")
+            return {
+                **state,
+                "narrative_response": f"❌ {validation.message}",
+                "structured_options": [],
+                "next_step": "update_state",
+            }
+
+        # ✅ Navegação válida - atualizar seção e BUSCAR RAG NOVO
+        from apps.game.services.retriever_service import get_section_by_number_direct
+
+        new_section_data = get_section_by_number_direct(state['book_class_name'], target_section)
+
+        if not new_section_data:
+            logger.error(f"[general_narrative] ✗ Seção {target_section} não encontrada no RAG")
+            return {
+                **state,
+                "narrative_response": f"❌ Erro: Seção {target_section} não existe.",
+                "structured_options": [],
+                "next_step": "update_state",
+            }
+
+        # Atualizar state com nova seção
+        current_section = target_section
+        section_content = new_section_data.get('content', '')
+        state['current_section'] = target_section
+        state['section_content'] = section_content
+
+        # Re-extrair section_info da NOVA seção
+        section_info = extract_all_section_info(section_content, current_section)
+        available_items = section_info.get('items', [])
+        available_exits = section_info.get('exits', [])
+        available_npcs = section_info.get('npcs', [])
+
+        logger.info(f"[general_narrative] ✓ Movido para seção {target_section} - RAG atualizado")
 
     # 🎯 STEP 3 & 4: Validar e executar ação (baseado no tipo)
     action_result = None

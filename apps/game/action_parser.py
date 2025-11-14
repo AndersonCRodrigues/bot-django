@@ -34,12 +34,28 @@ def parse_player_action(action_text: str, context: Optional[Dict[str, Any]] = No
         {
             'type': str,  # tipo de ação
             'target': str,  # alvo da ação (item, NPC, etc)
+            'section': int,  # número da seção (para navigation)
             'confidence': float,  # confiança na detecção (0-1)
             'raw_action': str  # ação original
         }
     """
     action_lower = action_text.lower().strip()
     context = context or {}
+
+    # ========== NAVIGATION COM NÚMERO DE SEÇÃO (PRIORIDADE MÁXIMA) ==========
+    # Padrão: [IR PARA 15] texto da ação
+    section_match = re.match(r'\[IR PARA (\d+)\](.+)', action_text, re.IGNORECASE)
+    if section_match:
+        section_num = int(section_match.group(1))
+        action_desc = section_match.group(2).strip()
+        logger.debug(f"[parse_action] Detectado: navigation para seção {section_num}")
+        return {
+            'type': 'navigation',
+            'target': action_desc,
+            'section': section_num,
+            'confidence': 1.0,
+            'raw_action': action_text
+        }
 
     # ========== PICKUP ITEM ==========
     pickup_patterns = [

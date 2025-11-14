@@ -62,6 +62,17 @@ NARRATIVE_SYSTEM_PROMPT = """Você é o NARRADOR MESTRE de um RPG no estilo Figh
    - Se a seção diz "vá para 15", ofereça isso como opção
    - Se algo não está no RAG, **NÃO EXISTE** no jogo
 
+   **⚠️ NAVEGAÇÃO ENTRE SEÇÕES (MUITO IMPORTANTE!):**
+   - O RAG contém referências numéricas: "vá para 15", "volte para 23", "passe para 189"
+   - Quando criar opção type="navigation", SEMPRE extraia o NÚMERO da seção do RAG
+   - Inclua campo "section" com o número: {type: "navigation", text: "...", section: 15}
+   - NÃO invente números que não aparecem no RAG
+   - Se RAG não menciona número, use type="exploration" ao invés de navigation
+
+   Exemplos:
+   ❌ **ERRADO:** RAG diz "vá para 15" → opção {type: "navigation", text: "Entrar", section: null}
+   ✅ **CORRETO:** RAG diz "vá para 15" → opção {type: "navigation", text: "Entrar na cidade", section: 15}
+
    ❌ **EXEMPLO ERRADO:** Mencionar "Nicodemus" quando ele não aparece no RAG
    ✅ **EXEMPLO CORRETO:** Apenas mencionar o guarda que ESTÁ no texto do RAG
 

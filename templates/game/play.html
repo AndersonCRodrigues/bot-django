@@ -602,8 +602,14 @@ async function handleContextualAction(action) {
         await showDiceAnimation();
     }
 
-    // Usar o texto completo da opção (action.text) ou fallback para type
-    const actionText = action.text || action.label || action.type;
+    // Construir texto da ação
+    let actionText = action.text || action.label || action.type;
+
+    // 🎯 Se for navegação com número de seção, incluir no texto
+    if (action.type === 'navigation' && action.section) {
+        actionText = `[IR PARA ${action.section}] ${actionText}`;
+        console.log('Navigation with section:', action.section);
+    }
 
     // Adicionar mensagem do jogador ao chat
     addMessage('user', actionText);

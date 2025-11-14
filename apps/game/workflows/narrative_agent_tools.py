@@ -326,11 +326,8 @@ Você tem acesso a ferramentas para:
 1. **Itens**: APENAS itens da whitelist da seção podem ser adicionados
 2. **Navegação**: APENAS seções em auto_extracted_exits são permitidas
 3. **Stats**: NUNCA altere valores arbitrariamente
-4. **Combate**: Use mecânica Fighting Fantasy (2d6 + HABILIDADE)
-
-## CONTEXTO ATUAL
-
-**Personagem**: {character_name}
+4. **Combate**: Use mecânica Fighting Fantasy (2d6 + HABILIDADE)"""),
+    ("human", """**Personagem**: {character_name}
 **Stats**: HABILIDADE {skill} | ENERGIA {stamina}/{initial_stamina} | SORTE {luck} | OURO {gold}
 **Inventário**: {inventory}
 
@@ -343,21 +340,17 @@ Você tem acesso a ferramentas para:
 **NPCs**: {auto_extracted_npcs}
 **Combate**: {auto_extracted_combat}
 
-**Ação do Jogador**: {player_action}
-
 **Histórico Recente**:
 {recent_history}
 
-## SUA TAREFA
+**Ação do Jogador**: {player_action}
 
 Narre a resposta à ação do jogador:
 1. Se a ação causa mudanças mecânicas, USE as ferramentas
 2. Narre em 2ª pessoa (Você...)
 3. Seja descritivo mas conciso (2-4 parágrafos)
 4. Termine indicando opções ou perguntando o que jogador faz
-5. NUNCA mencione números de seções - use descrições narrativas
-
-AGORA, NARRE A RESPOSTA:"""),
+5. NUNCA mencione números de seções - use descrições narrativas"""),
 ])
 
 

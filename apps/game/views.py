@@ -28,6 +28,8 @@ from apps.characters.models import Character
 from apps.game.models import GameSession
 from apps.game.workflows.game_workflow import process_game_action
 from apps.game.services.usage_tracker import UsageTracker
+from apps.game.consumables_handler import handle_consumable_action
+from apps.game.achievements import check_achievements
 
 logger = logging.getLogger("game.views")
 
@@ -303,31 +305,82 @@ def process_action(request, session_id):
 
         logger.info(f"[process_action] Sessão {session_id}: '{player_action}'")
 
-        # Processar ação através do LangGraph workflow
-        result = process_game_action(
-            session_id=session_id,
-            user_id=request.user.id,
-            player_action=player_action,
-        )
+        # Buscar personagem
+        character = Character.find_by_id(session.character_id, request.user.id)
+        if not character:
+            return JsonResponse({
+                'success': False,
+                'error': 'Personagem não encontrado.'
+            }, status=404)
 
-        # Adicionar metadados úteis
+        # Verificar se é ação de consumível (rações/poções)
+        consumable_result = handle_consumable_action(player_action, character, session)
+
+        if consumable_result:
+            # Foi ação de consumível, retornar resultado direto
+            result = consumable_result
+        else:
+            # Processar ação normal através do LangGraph workflow
+            result = process_game_action(
+                session_id=session_id,
+                user_id=request.user.id,
+                player_action=player_action,
+            )
+
+            # Recarregar character e session para verificar achievements
+            character = Character.find_by_id(session.character_id, request.user.id)
+            session = GameSession.find_by_id(session_id, request.user.id)
+
+        # Adicionar metadados úteis e verificar achievements
         if result['success']:
             # Buscar adventure para info adicional
             adventure = Adventure.objects.get(pk=session.adventure_id)
             result['adventure_title'] = adventure.title
 
-            # Track API usage
+            # Verificar achievements desbloqueados
             try:
-                UsageTracker.track_simple(
-                    user=request.user,
-                    tokens_input=len(player_action) // 4,  # Estimativa
-                    tokens_output=len(result.get('narrative', '')) // 4,  # Estimativa
-                    adventure_id=session.adventure_id,
-                    session_id=session_id,
-                    operation_type='narrate',
-                )
+                newly_unlocked = check_achievements(request.user.id, session, character)
+                if newly_unlocked:
+                    result['achievements'] = [ach.to_dict() for ach in newly_unlocked]
+                    logger.info(f"[process_action] {len(newly_unlocked)} achievements desbloqueados!")
+                else:
+                    result['achievements'] = []
             except Exception as e:
-                logger.warning(f"Erro ao rastrear usage: {e}")
+                logger.error(f"Erro ao verificar achievements: {e}", exc_info=True)
+                result['achievements'] = []
+
+            # Adicionar dados do personagem para atualizar UI de consumíveis
+            if 'character' not in result:
+                result['character'] = {
+                    'skill': character.skill,
+                    'stamina': character.stamina,
+                    'luck': character.luck,
+                    'initial_skill': character.initial_skill,
+                    'initial_stamina': character.initial_stamina,
+                    'initial_luck': character.initial_luck,
+                    'gold': character.gold,
+                    'provisions': character.provisions,
+                    'potion1': character.potion1,
+                    'potion2': character.potion2,
+                }
+
+            # Adicionar flags (in_combat, etc)
+            if 'flags' not in result:
+                result['flags'] = session.flags
+
+            # Track API usage (apenas se não for consumível)
+            if not consumable_result:
+                try:
+                    UsageTracker.track_simple(
+                        user=request.user,
+                        tokens_input=len(player_action) // 4,  # Estimativa
+                        tokens_output=len(result.get('narrative', '')) // 4,  # Estimativa
+                        adventure_id=session.adventure_id,
+                        session_id=session_id,
+                        operation_type='narrate',
+                    )
+                except Exception as e:
+                    logger.warning(f"Erro ao rastrear usage: {e}")
 
         logger.info(f"[process_action] Resultado: success={result['success']}, "
                    f"game_over={result['game_over']}, turn={result['turn_number']}")

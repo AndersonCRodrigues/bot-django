@@ -71,6 +71,17 @@
                 </div>
             </div>
 
+            <!-- Consumíveis (Rações e Poções) -->
+            <div class="mb-6">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-xl">⚗️</span>
+                    <h3 class="text-white font-semibold text-sm">Consumíveis</h3>
+                </div>
+                <div class="flex flex-col gap-2" id="consumables-container">
+                    <!-- Botões serão inseridos via JavaScript -->
+                </div>
+            </div>
+
             <!-- Inventário -->
             <div class="flex-1">
                 <div class="flex items-center gap-2 mb-3">
@@ -317,6 +328,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/game/enhancements.js' %}"></script>
 <style>
 /* Animação 3D de Dados */
 .dice-container {
@@ -422,14 +434,31 @@ function useItem(item) {
     document.getElementById('action-input').focus();
 }
 
+// Armazenar stats antigos para comparação
+let oldStats = {
+    skill: {{ character.skill }},
+    stamina: {{ character.stamina }},
+    luck: {{ character.luck }},
+    gold: {{ character.gold }},
+    provisions: {{ character.provisions }}
+};
+
 function updateStats(stats) {
     if (!stats) return;
+
+    // Atualizar com partículas
+    if (window.gameEnhancements) {
+        window.gameEnhancements.updateStatsWithParticles(stats, oldStats);
+    }
 
     document.getElementById('stat-skill').textContent = stats.skill || 0;
     document.getElementById('stat-stamina').textContent = `${stats.stamina || 0}/${initialStamina}`;
     document.getElementById('stat-luck').textContent = `${stats.luck || 0}/${initialLuck}`;
     document.getElementById('stat-gold').textContent = stats.gold || 0;
     document.getElementById('stat-provisions').textContent = stats.provisions || 0;
+
+    // Atualizar oldStats
+    oldStats = { ...stats };
 
     const staminaPercent = initialStamina > 0 ? (stats.stamina / initialStamina) * 100 : 0;
     const luckPercent = initialLuck > 0 ? (stats.luck / initialLuck) * 100 : 0;
@@ -572,7 +601,15 @@ function updateCombatPanel(combatData) {
 
     if (!combatData) {
         panel.classList.add('hidden');
+        if (window.gameEnhancements) {
+            window.gameEnhancements.updateCombat(null);
+        }
         return;
+    }
+
+    // Atualizar gráfico de dano e combo
+    if (window.gameEnhancements) {
+        window.gameEnhancements.updateCombat(combatData);
     }
 
     panel.classList.remove('hidden');
@@ -595,8 +632,8 @@ function updateCombatPanel(combatData) {
     }
 }
 
-// ===== ENVIAR AÇÃO =====
-async function sendAction(action) {
+// ===== ENVIAR AÇÃO (Tornado global para consumíveis) =====
+window.sendAction = async function(action) {
     const input = document.getElementById('action-input');
     const btn = document.getElementById('action-btn');
 
@@ -629,6 +666,20 @@ async function sendAction(action) {
             updateStats(data.stats);
             updateInventory(data.inventory);
             updateCombatPanel(data.combat_data);
+
+            // Atualizar consumíveis
+            if (window.gameEnhancements && data.character && data.flags) {
+                window.gameEnhancements.updateConsumables(data.character, data.flags);
+            }
+
+            // Notificar achievements
+            if (data.achievements && data.achievements.length > 0) {
+                data.achievements.forEach(ach => {
+                    if (window.gameEnhancements) {
+                        window.gameEnhancements.notifyAchievement(ach);
+                    }
+                });
+            }
 
             // Mostrar ações disponíveis
             if (data.available_actions && data.available_actions.length > 0) {
@@ -663,7 +714,7 @@ async function sendAction(action) {
         btn.disabled = false;
         input.focus();
     }
-}
+};
 
 document.getElementById('action-form').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -678,10 +729,28 @@ document.getElementById('action-form').addEventListener('submit', async function
     addMessage('user', action);
     input.value = '';
 
-    await sendAction(action);
+    await window.sendAction(action);
 });
 
 scrollToBottom();
+
+// Inicializar consumíveis
+setTimeout(() => {
+    if (window.gameEnhancements) {
+        window.gameEnhancements.updateConsumables(
+            {
+                provisions: {{ character.provisions }},
+                potion1: '{{ character.potion1|default:"" }}',
+                potion2: '{{ character.potion2|default:"" }}',
+                stamina: {{ character.stamina }},
+                initial_stamina: {{ character.initial_stamina }}
+            },
+            {
+                in_combat: false
+            }
+        );
+    }
+}, 500);
 
 // Debug: mostrar history carregado
 console.log('History loaded:', {{ history|length }}, 'entries');

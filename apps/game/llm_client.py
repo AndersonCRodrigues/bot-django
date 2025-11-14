@@ -1,27 +1,28 @@
 """
-🎯 Cliente LLM Global Simplificado
+🎯 Cliente LLM Global - OpenAI
 
-SEM rate limiter por enquanto - focar em resolver 429 primeiro.
+Migrado de Gemini para OpenAI para evitar rate limiting (15 RPM -> 500 RPM).
+Usando gpt-4o-mini (mais barato) + text-embedding-3-small.
 """
 
 import logging
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from django.conf import settings
 
 logger = logging.getLogger("game.llm_client")
 
-# 🎯 Instância global SIMPLES
-logger.info("[LLM Client] Criando instância global de ChatGoogleGenerativeAI")
-llm_client = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash-lite",
-    google_api_key=settings.GEMINI_API_KEY,
+# 🎯 Instância global OpenAI
+logger.info("[LLM Client] Criando instância global de ChatOpenAI (gpt-4o-mini)")
+llm_client = ChatOpenAI(
+    model="gpt-4o-mini",
+    api_key=settings.OPENAI_API_KEY,
     temperature=0.7,
-    max_output_tokens=2048,
-    max_retries=0,  # 🚫 Desabilita retries para evitar multiplicar chamadas
+    max_tokens=2048,
+    max_retries=2,
 )
 
-logger.info("[LLM Client] Criando instância global de GoogleGenerativeAIEmbeddings")
-embedding_client = GoogleGenerativeAIEmbeddings(
-    model="models/text-embedding-004",
-    google_api_key=settings.GEMINI_API_KEY,
+logger.info("[LLM Client] Criando instância global de OpenAIEmbeddings")
+embedding_client = OpenAIEmbeddings(
+    model="text-embedding-3-small",
+    api_key=settings.OPENAI_API_KEY,
 )

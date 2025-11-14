@@ -161,6 +161,52 @@
                 </div>
             </div>
 
+            <!-- Painel de Combate (aparece durante combate) -->
+            <div id="combat-panel" class="hidden border-t border-[#27272A] bg-gradient-to-b from-red-900/10 to-transparent p-4">
+                <div class="max-w-3xl mx-auto">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">⚔️</span>
+                            <div>
+                                <h3 class="text-white font-bold" id="enemy-name">Inimigo</h3>
+                                <p class="text-xs text-[#71717A]">Habilidade: <span id="enemy-skill">?</span></p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-[#71717A]">Energia</p>
+                            <p class="text-white font-bold" id="enemy-hp">?/?</p>
+                        </div>
+                    </div>
+                    <div class="w-full bg-[#1A1A1A] rounded-full h-2 overflow-hidden">
+                        <div id="enemy-hp-bar" class="h-full bg-gradient-to-r from-red-600 to-orange-500 transition-all duration-500" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Área de Animação de Dados -->
+            <div id="dice-animation" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center">
+                <div class="relative">
+                    <div class="dice-container">
+                        <div class="dice" id="dice-3d">
+                            <div class="face front">⚀</div>
+                            <div class="face back">⚁</div>
+                            <div class="face right">⚂</div>
+                            <div class="face left">⚃</div>
+                            <div class="face top">⚄</div>
+                            <div class="face bottom">⚅</div>
+                        </div>
+                    </div>
+                    <p class="text-white text-center mt-6 text-lg font-bold" id="dice-result">Rolando...</p>
+                </div>
+            </div>
+
+            <!-- Botões Contextuais (aparecem quando há ações disponíveis) -->
+            <div id="contextual-actions" class="hidden border-t border-[#27272A] bg-[#0F0F0F] px-4 sm:px-6 py-4">
+                <div class="flex gap-3 justify-center flex-wrap" id="action-buttons-container">
+                    <!-- Botões serão inseridos aqui via JavaScript -->
+                </div>
+            </div>
+
             <!-- Input Fixo -->
             <footer class="bg-[#0F0F0F] border-t border-[#27272A] px-4 sm:px-6 py-4">
                 <form id="action-form" class="flex gap-3">
@@ -271,6 +317,69 @@
 {% endblock %}
 
 {% block extra_js %}
+<style>
+/* Animação 3D de Dados */
+.dice-container {
+    perspective: 1000px;
+}
+
+.dice {
+    width: 100px;
+    height: 100px;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: roll 1.5s ease-out;
+}
+
+@keyframes roll {
+    0% { transform: rotateX(0deg) rotateY(0deg); }
+    100% { transform: rotateX(720deg) rotateY(720deg); }
+}
+
+.dice .face {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(145deg, #ffffff, #e0e0e0);
+    border: 2px solid #333;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+}
+
+.dice .front  { transform: rotateY(0deg) translateZ(50px); }
+.dice .back   { transform: rotateY(180deg) translateZ(50px); }
+.dice .right  { transform: rotateY(90deg) translateZ(50px); }
+.dice .left   { transform: rotateY(-90deg) translateZ(50px); }
+.dice .top    { transform: rotateX(90deg) translateZ(50px); }
+.dice .bottom { transform: rotateX(-90deg) translateZ(50px); }
+
+/* Shake Animation */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+    20%, 40%, 60%, 80% { transform: translateX(10px); }
+}
+
+.shake {
+    animation: shake 0.5s;
+}
+
+/* Pulse Animation */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.pulse {
+    animation: pulse 0.3s;
+}
+</style>
+
 <script>
 // Debug: verificar se script carrega
 console.log('=== GAME SCRIPT LOADING ===');
@@ -392,20 +501,105 @@ function addMessage(type, content) {
     scrollToBottom();
 }
 
-document.getElementById('action-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
+// ===== SISTEMA DE AÇÕES CONTEXTUAIS =====
+function showContextualActions(actions) {
+    const container = document.getElementById('contextual-actions');
+    const buttonsContainer = document.getElementById('action-buttons-container');
 
+    if (!actions || actions.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    buttonsContainer.innerHTML = '';
+
+    actions.forEach(action => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] hover:from-[#5558E3] hover:to-[#7C3AED] text-white font-semibold px-6 py-3 rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center gap-2';
+        button.innerHTML = `<span>${action.icon}</span><span>${action.label}</span>`;
+        button.onclick = () => handleContextualAction(action);
+        buttonsContainer.appendChild(button);
+    });
+
+    container.classList.remove('hidden');
+    disableTextInput(true);
+}
+
+function hideContextualActions() {
+    document.getElementById('contextual-actions').classList.add('hidden');
+    disableTextInput(false);
+}
+
+function disableTextInput(disabled) {
     const input = document.getElementById('action-input');
     const btn = document.getElementById('action-btn');
-    const action = input.value.trim();
+    input.disabled = disabled;
+    btn.disabled = disabled;
+}
 
-    console.log('Form submitted, action:', action);
+async function handleContextualAction(action) {
+    console.log('Contextual action clicked:', action);
 
-    if (!action) return;
+    hideContextualActions();
 
-    addMessage('user', action);
+    // Mostrar animação de dados se for teste/ataque
+    if (action.type === 'test_luck' || action.type === 'attack') {
+        await showDiceAnimation();
+    }
 
-    input.value = '';
+    // Enviar ação ao servidor
+    await sendAction(action.type);
+}
+
+// ===== ANIMAÇÃO DE DADOS =====
+async function showDiceAnimation() {
+    const diceElement = document.getElementById('dice-animation');
+    const resultElement = document.getElementById('dice-result');
+
+    diceElement.classList.remove('hidden');
+    resultElement.textContent = '🎲 Rolando...';
+
+    // Animar por 1.5s
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    diceElement.classList.add('hidden');
+}
+
+// ===== PAINEL DE COMBATE =====
+function updateCombatPanel(combatData) {
+    const panel = document.getElementById('combat-panel');
+
+    if (!combatData) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    panel.classList.remove('hidden');
+
+    document.getElementById('enemy-name').textContent = combatData.enemy_name || 'Inimigo';
+    document.getElementById('enemy-skill').textContent = combatData.enemy_skill || '?';
+    document.getElementById('enemy-hp').textContent = `${combatData.enemy_stamina || 0}/${combatData.enemy_max_stamina || combatData.enemy_stamina || 0}`;
+
+    const maxHp = combatData.enemy_max_stamina || combatData.enemy_stamina || 1;
+    const currentHp = combatData.enemy_stamina || 0;
+    const hpPercent = (currentHp / maxHp) * 100;
+
+    const hpBar = document.getElementById('enemy-hp-bar');
+    hpBar.style.width = Math.max(0, hpPercent) + '%';
+
+    // Shake effect quando inimigo leva dano
+    if (currentHp < maxHp) {
+        hpBar.classList.add('shake');
+        setTimeout(() => hpBar.classList.remove('shake'), 500);
+    }
+}
+
+// ===== ENVIAR AÇÃO =====
+async function sendAction(action) {
+    const input = document.getElementById('action-input');
+    const btn = document.getElementById('action-btn');
+
     input.disabled = true;
     btn.disabled = true;
 
@@ -417,14 +611,10 @@ document.getElementById('action-form').addEventListener('submit', async function
         formData.append('action', action);
         formData.append('csrfmiddlewaretoken', csrfToken);
 
-        console.log('Sending request to:', `/game/play/${sessionId}/action/`);
-
         const response = await fetch(`/game/play/${sessionId}/action/`, {
             method: 'POST',
             body: formData,
         });
-
-        console.log('Response status:', response.status);
 
         const data = await response.json();
         console.log('Response data:', data);
@@ -432,16 +622,20 @@ document.getElementById('action-form').addEventListener('submit', async function
         document.getElementById('typing-indicator').classList.add('hidden');
 
         if (data.success) {
-            console.log('Success! Narrative:', data.narrative ? data.narrative.substring(0, 50) + '...' : 'EMPTY');
-
             if (data.narrative) {
                 addMessage('narrator', data.narrative);
-            } else {
-                console.warn('Narrative is empty!');
             }
 
             updateStats(data.stats);
             updateInventory(data.inventory);
+            updateCombatPanel(data.combat_data);
+
+            // Mostrar ações disponíveis
+            if (data.available_actions && data.available_actions.length > 0) {
+                showContextualActions(data.available_actions);
+            } else {
+                hideContextualActions();
+            }
 
             if (data.current_section) {
                 document.getElementById('section-badge').textContent = data.current_section;
@@ -458,7 +652,6 @@ document.getElementById('action-form').addEventListener('submit', async function
                 }, 500);
             }
         } else {
-            console.error('Request failed:', data.error);
             addMessage('narrator', `❌ Erro: ${data.error || 'Erro desconhecido'}`);
         }
     } catch (error) {
@@ -470,6 +663,22 @@ document.getElementById('action-form').addEventListener('submit', async function
         btn.disabled = false;
         input.focus();
     }
+}
+
+document.getElementById('action-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const input = document.getElementById('action-input');
+    const action = input.value.trim();
+
+    console.log('Form submitted, action:', action);
+
+    if (!action) return;
+
+    addMessage('user', action);
+    input.value = '';
+
+    await sendAction(action);
 });
 
 scrollToBottom();

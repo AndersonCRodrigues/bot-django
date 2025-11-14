@@ -26,11 +26,11 @@ logger = logging.getLogger("game.workflow")
 
 # 🎯 Rate limiter global para Gemini API
 # Free tier limits: 15 RPM, 1000 RPD
-# Configurado para 10 RPM (margem de segurança)
+# Configurado para 5 RPM (margem conservadora)
 _rate_limiter = InMemoryRateLimiter(
-    requests_per_second=10 / 60,  # 10 requests por minuto = 0.167 req/s
+    requests_per_second=5 / 60,  # 5 requests por minuto = 0.083 req/s
     check_every_n_seconds=0.1,
-    max_bucket_size=5,  # Permite burst de até 5 requests
+    max_bucket_size=3,  # Permite burst de até 3 requests
 )
 
 

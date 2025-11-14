@@ -12,7 +12,11 @@ from .prompts import (
     TEST_PROMPT,
     ACTION_VALIDATOR_PROMPT,
 )
-from apps.game.services.retriever_service import search_section, get_section_by_number
+from apps.game.services.retriever_service import (
+    search_section,
+    get_section_by_number,
+    get_section_by_number_direct,
+)
 from apps.game.tools.combat import combat_round, start_combat
 from apps.game.tools.dice import roll_dice, check_luck, check_skill
 from apps.game.tools.inventory import add_item, remove_item, check_item, use_item
@@ -156,12 +160,10 @@ def retrieve_context_node(state: GameState) -> Dict[str, Any]:
     current_section = state["current_section"]
     action_type = state.get("action_type", "exploration")
     try:
-        if action_type == "navigation":
-            section_data = get_section_by_number(book_class_name, current_section)
-        else:
-            query = f"seção {current_section} {state['player_action']}"
-            results = search_section(book_class_name, query, k=1)
-            section_data = results[0] if results else None
+        # 🚀 OTIMIZAÇÃO: Busca direta por metadata (SEM EMBEDDING!)
+        # Economiza 1 API call por turno, reduzindo rate limiting
+        section_data = get_section_by_number_direct(book_class_name, current_section)
+
         if not section_data:
             logger.warning(
                 f"[retrieve_context_node] Seção {current_section} não encontrada"

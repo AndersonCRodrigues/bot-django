@@ -140,7 +140,7 @@ def start_game(request, pk):
             }, status=400)
 
         # Verificar se personagem existe e pertence ao usuário
-        character = Character.find_by_id(character_id)
+        character = Character.find_by_id(character_id, request.user.id)
         if not character or character.get('user_id') != request.user.id:
             return JsonResponse({
                 'success': False,
@@ -207,7 +207,7 @@ def play_game(request, session_id):
             })
 
         # Buscar personagem
-        character = Character.find_by_id(session.character_id)
+        character = Character.find_by_id(session.character_id, request.user.id)
 
         if not character:
             return render(request, 'game/error.html', {
@@ -354,7 +354,7 @@ def save_game(request, session_id):
             }, status=404)
 
         # Buscar character para stats atualizados
-        character = Character.find_by_id(session.character_id)
+        character = Character.find_by_id(session.character_id, request.user.id)
 
         return JsonResponse({
             'success': True,
@@ -393,7 +393,7 @@ def load_game(request):
 
         for session in sessions:
             adventure = Adventure.objects.get(pk=session.adventure_id)
-            character = Character.find_by_id(session.character_id)
+            character = Character.find_by_id(session.character_id, request.user.id)
 
             enriched_sessions.append({
                 'session': session,
@@ -434,7 +434,7 @@ def game_history(request, session_id):
             }, status=404)
 
         adventure = get_object_or_404(Adventure, pk=session.adventure_id)
-        character = Character.find_by_id(session.character_id)
+        character = Character.find_by_id(session.character_id, request.user.id)
 
         context = {
             'session': session,
@@ -507,7 +507,7 @@ def get_character_stats(request, session_id):
                 'error': 'Sessão não encontrada.'
             }, status=404)
 
-        character = Character.find_by_id(session.character_id)
+        character = Character.find_by_id(session.character_id, request.user.id)
 
         return JsonResponse({
             'success': True,

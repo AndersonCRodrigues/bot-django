@@ -211,15 +211,10 @@ def generate_hybrid_narrative(
         return validation["error_message"]
     inventory_str = ", ".join(inventory) if inventory else "Vazio"
     flags_str = str(flags) if flags else "{}"
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    from django.conf import settings
 
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        google_api_key=settings.GEMINI_API_KEY,
-        temperature=0.8,
-        max_output_tokens=1024,
-    )
+    # 🎯 Usar cliente LLM global
+    from apps.game.llm_client import llm_client
+    llm = llm_client
     chain = HYBRID_NARRATIVE_PROMPT | llm
     response = chain.invoke(
         {

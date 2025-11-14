@@ -3,7 +3,6 @@ import json
 import re
 from datetime import datetime
 from typing import Dict, Any
-from langchain_google_genai import ChatGoogleGenerativeAI
 from django.conf import settings
 from .state import GameState
 from .prompts import (
@@ -24,19 +23,7 @@ from apps.game.tools.character import update_character_stats, get_character_stat
 from apps.game.models import GameSession
 from apps.characters.models import Character
 from apps.game.workflows.narrative_agent import RigidStructureValidator
-from apps.game.narrative_templates import (
-    format_combat_narrative,
-    format_luck_test_narrative,
-    format_skill_test_narrative,
-)
-from apps.game.action_parser import parse_player_action
-from apps.game.action_validators import (
-    validate_pickup_item,
-    validate_use_item,
-    validate_navigation,
-    validate_talk_to_npc,
-)
-from apps.game.rag_extractors import extract_all_section_info
+from apps.game.llm_client import llm_client  # 🎯 Cliente LLM global
 
 logger = logging.getLogger("game.workflow")
 
@@ -81,13 +68,14 @@ def _clean_section_navigation(text: str) -> str:
     return cleaned.strip()
 
 
-def get_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
-    return ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash-lite",
-        google_api_key=settings.GEMINI_API_KEY,
-        temperature=temperature,
-        max_output_tokens=2048,
-    )
+def get_llm(temperature: float = 0.7):
+    """
+    🎯 Retorna cliente LLM global.
+
+    IMPORTANTE: Sempre retorna a MESMA instância global.
+    Temperatura é fixa em 0.7 (configurada no llm_client).
+    """
+    return llm_client
 
 
 def validate_action_node(state: GameState) -> Dict[str, Any]:

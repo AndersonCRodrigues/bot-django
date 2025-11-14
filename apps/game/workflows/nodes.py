@@ -20,6 +20,11 @@ from apps.game.tools.character import update_character_stats, get_character_stat
 from apps.game.models import GameSession
 from apps.characters.models import Character
 from apps.game.workflows.narrative_agent import RigidStructureValidator
+from apps.game.narrative_templates import (
+    format_combat_narrative,
+    format_luck_test_narrative,
+    format_skill_test_narrative,
+)
 
 logger = logging.getLogger("game.workflow")
 
@@ -256,26 +261,23 @@ def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
         "enemy_stamina": combat_result["enemy_stamina"],
         "rounds": combat_data.get("rounds", 0) + 1,
     }
-    llm = get_llm(temperature=0.7)
-    chain = COMBAT_PROMPT | llm
-    response = chain.invoke(
-        {
-            "enemy_name": combat_data["enemy_name"],
-            "enemy_skill": combat_data["enemy_skill"],
-            "enemy_stamina": combat_data["enemy_stamina"],
-            "character_skill": state["skill"],
-            "character_stamina": state["stamina"],
-            "character_roll": combat_result["character_roll"],
-            "character_roll_details": combat_result["character_roll_details"],
-            "character_attack": combat_result["character_attack"],
-            "enemy_roll": combat_result["enemy_roll"],
-            "enemy_roll_details": combat_result["enemy_roll_details"],
-            "enemy_attack": combat_result["enemy_attack"],
-            "combat_result": combat_result["message"],
-            "new_character_stamina": combat_result["character_stamina"],
-            "new_enemy_stamina": combat_result["enemy_stamina"],
-        }
+
+    # 🎯 OTIMIZAÇÃO: Usar template Python em vez de LLM (evita 429 errors)
+    narrative_text = format_combat_narrative(
+        enemy_name=combat_data["enemy_name"],
+        enemy_skill=combat_data["enemy_skill"],
+        enemy_stamina=combat_data["enemy_stamina"],
+        character_skill=state["skill"],
+        character_stamina=state["stamina"],
+        character_roll=combat_result["character_roll"],
+        character_attack=combat_result["character_attack"],
+        enemy_roll=combat_result["enemy_roll"],
+        enemy_attack=combat_result["enemy_attack"],
+        combat_result=combat_result["message"],
+        new_character_stamina=combat_result["character_stamina"],
+        new_enemy_stamina=combat_result["enemy_stamina"],
     )
+
     in_combat = combat_result["winner"] is None
     game_over = combat_result["winner"] == "enemy"
     victory = combat_result["winner"] == "character"
@@ -288,7 +290,7 @@ def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
         "stamina": combat_result["character_stamina"],
         "combat_data": new_combat_data if in_combat else None,
         "in_combat": in_combat,
-        "narrative_response": response.content,
+        "narrative_response": narrative_text,
         "game_over": game_over,
         "victory": victory,
         "next_step": "update_state",
@@ -297,43 +299,47 @@ def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
 
 def _generate_test_narrative(state: GameState) -> Dict[str, Any]:
     action_type = state.get("action_type", "test_luck")
+
+    # 🎯 OTIMIZAÇÃO: Usar template Python em vez de LLM (evita 429 errors)
     if action_type == "test_luck":
         test_result = check_luck(character_luck=state["luck"])
         test_type = "SORTE"
-        stat_value = state["luck"]
         new_stat_value = test_result["new_luck"]
+
+        narrative_text = format_luck_test_narrative(
+            character_name=state["character_name"],
+            luck_value=state["luck"],
+            roll=test_result["roll"],
+            success=test_result["success"],
+            new_luck=new_stat_value,
+            player_action=state["player_action"],
+        )
     else:
         test_result = check_skill(character_skill=state["skill"])
         test_type = "HABILIDADE"
-        stat_value = state["skill"]
-        new_stat_value = stat_value
-    llm = get_llm(temperature=0.7)
-    chain = TEST_PROMPT | llm
-    response = chain.invoke(
-        {
-            "test_type": test_type,
-            "test_type_upper": test_type,
-            "character_name": state["character_name"],
-            "stat_value": stat_value,
-            "roll": test_result["roll"],
-            "roll_details": test_result.get("rolls_detail", []),
-            "target": state["luck"] if action_type == "test_luck" else state["skill"],
-            "success": test_result["success"],
-            "new_stat_value": new_stat_value,
-            "player_action": state["player_action"],
-        }
-    )
+        new_stat_value = state["skill"]
+
+        narrative_text = format_skill_test_narrative(
+            character_name=state["character_name"],
+            skill_value=state["skill"],
+            roll=test_result["roll"],
+            success=test_result["success"],
+            player_action=state["player_action"],
+        )
+
     updates = {}
     if action_type == "test_luck":
         updates["luck"] = new_stat_value
+
     logger.info(
         f"[generate_test_narrative] Teste de {test_type}: "
         f"{'SUCESSO' if test_result['success'] else 'FALHA'}"
     )
+
     return {
         **state,
         **updates,
-        "narrative_response": response.content,
+        "narrative_response": narrative_text,
         "next_step": "update_state",
     }
 

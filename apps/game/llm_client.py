@@ -16,7 +16,7 @@ logger.info("[LLM Client] Criando instância global de ChatOpenAI (gpt-4o-mini)"
 llm_client = ChatOpenAI(
     model="gpt-4o-mini",
     api_key=settings.OPENAI_API_KEY,
-    temperature=0.7,
+    temperature=0.2,  # 🎯 Reduzido de 0.7 para forçar seguir instruções RAG
     max_tokens=2048,
     max_retries=2,
 )

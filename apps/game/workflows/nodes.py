@@ -25,6 +25,7 @@ from apps.characters.models import Character
 from apps.game.workflows.narrative_agent import RigidStructureValidator
 from apps.game.llm_client import llm_client  # 🎯 Cliente LLM global
 from apps.game.json_parser import extract_narrative_and_options, filter_valid_options
+from apps.game.workflows.narrative_tools import NARRATIVE_TOOLS, provide_game_narrative
 from apps.game.narrative_templates import (
     format_combat_narrative,
     format_luck_test_narrative,
@@ -309,9 +310,16 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
                 'message': f"Você conversa com {action_target}."
             }
 
-    # 🎯 STEP 5: LLM narra o resultado
+    # 🎯 STEP 5: LLM narra o resultado usando TOOL FORCING
     llm = get_llm(temperature=0.8)
-    chain = NARRATIVE_PROMPT | llm
+
+    # Vincular tools e FORÇAR uso da tool provide_game_narrative
+    llm_with_tools = llm.bind_tools(
+        NARRATIVE_TOOLS,
+        tool_choice="provide_game_narrative"  # 🎯 FORÇA usar a tool
+    )
+
+    chain = NARRATIVE_PROMPT | llm_with_tools
     recent_history = _format_recent_history(state.get("history", []))
     inventory_str = ", ".join(updates.get('inventory', inventory)) or "Vazio"
 
@@ -338,17 +346,32 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
         }
     )
 
-    # 🎯 STEP 6: Extrair narrativa e opções estruturadas do JSON
-    raw_response = response.content
-    narrative_text, structured_options = extract_narrative_and_options(raw_response)
+    # 🎯 STEP 6: Extrair dados estruturados da tool call
+    narrative_text = ""
+    structured_options = []
+
+    if response.tool_calls:
+        # LLM chamou a tool - extrair argumentos
+        tool_call = response.tool_calls[0]
+        tool_args = tool_call.get("args", {})
+
+        narrative_text = tool_args.get("narrative", "")
+        structured_options = tool_args.get("options", [])
+
+        logger.info(f"✅ Tool call recebida: {len(structured_options)} opções estruturadas")
+    else:
+        # Fallback: tentar extrair JSON do texto (se LLM não chamou tool)
+        logger.warning("⚠️ LLM não chamou tool! Tentando fallback para JSON parsing...")
+        raw_response = response.content
+        narrative_text, structured_options = extract_narrative_and_options(raw_response)
 
     # Validar e filtrar opções
     valid_options = filter_valid_options(structured_options)
 
     if valid_options:
-        logger.info(f"✅ {len(valid_options)} opções estruturadas extraídas")
+        logger.info(f"✅ {len(valid_options)} opções válidas após filtro")
     else:
-        logger.warning("⚠️ Nenhuma opção estruturada encontrada. LLM pode não ter seguido o formato.")
+        logger.warning("⚠️ Nenhuma opção estruturada válida!")
 
     # Se ação falhou, priorizar mensagem de erro
     if action_result and not action_result['success']:

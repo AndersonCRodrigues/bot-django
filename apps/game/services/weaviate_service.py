@@ -44,10 +44,14 @@ def get_weaviate_client():
 
 
 def get_embedding_model():
-    return GoogleGenerativeAIEmbeddings(
-        model="models/text-embedding-004",
-        google_api_key=settings.GEMINI_API_KEY,
-    )
+    """
+    🎯 Retorna instância singleton de GoogleGenerativeAIEmbeddings.
+
+    IMPORTANTE: Agora usa singleton para evitar múltiplas instâncias
+    e resolver erro 429.
+    """
+    from apps.game.llm_client import get_shared_embeddings
+    return get_shared_embeddings()
 
 
 def create_vector_store(class_name: str) -> Optional[WeaviateVectorStore]:

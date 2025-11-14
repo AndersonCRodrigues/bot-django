@@ -1,10 +1,10 @@
 """
-Prompts otimizados para Gemini gerar narrativas estilo Fighting Fantasy.
+Prompts otimizados para OpenAI gerar narrativas estilo Fighting Fantasy.
 
 Todos os prompts seguem as regras clássicas dos livros-jogo:
 - Narração em 2ª pessoa ("Você...")
 - Descrições imersivas e detalhadas
-- Apresentar escolhas claras numeradas
+- Apresentar escolhas claras com marcadores (• ou -)
 - Manter consistência com regras de HABILIDADE, ENERGIA e SORTE
 """
 
@@ -32,10 +32,12 @@ NARRATIVE_SYSTEM_PROMPT = """Você é o NARRADOR MESTRE de um RPG no estilo Figh
 
    O que você faz?
 
-   1. [Opção 1]
-   2. [Opção 2]
-   3. [Opção 3]
+   • [Opção 1 - texto completo descritivo]
+   • [Opção 2 - texto completo descritivo]
+   • [Opção 3 - texto completo descritivo]
    ```
+
+   **IMPORTANTE:** Use SEMPRE marcadores (•) em vez de números. O jogador precisa copiar/escrever a ação completa.
 
 4. **MECÂNICAS DO JOGO:**
    - HABILIDADE: usado para combate e testes
@@ -66,9 +68,9 @@ NARRATIVE_SYSTEM_PROMPT = """Você é o NARRADOR MESTRE de um RPG no estilo Figh
 
 O que você faz?
 
-1. Investigar o baú misterioso
-2. Explorar o corredor à esquerda
-3. Testar sua SORTE para abrir o baú silenciosamente"
+• Investigar o baú misterioso
+• Explorar o corredor à esquerda
+• Testar sua SORTE para abrir o baú silenciosamente"
 
 ✗ "Eu entro na sala. Tem um baú. Escolha: 1) Abrir baú 2) Ir embora"
 """
@@ -109,7 +111,8 @@ NARRATIVE_PROMPT = ChatPromptTemplate.from_messages(
 
 **TAREFA:**
 Narre a resposta à ação do jogador seguindo o estilo Fighting Fantasy.
-Apresente 3-4 opções numeradas do que fazer a seguir.
+Apresente 3-4 opções com marcadores (•) do que fazer a seguir.
+Use texto descritivo completo em cada opção (ex: "Testar sua HABILIDADE", "Atacar o goblin").
 Se a seção indicar combate/teste, inclua nas opções.
 """,
         ),
@@ -150,10 +153,12 @@ COMBAT_SYSTEM_PROMPT = """Você é o NARRADOR DE COMBATE de um RPG Fighting Fant
 
    O que você faz?
 
-   1. Continuar atacando
-   2. Tentar fugir (Teste de SORTE)
-   3. Usar item
+   • Continuar atacando
+   • Tentar fugir (Teste de SORTE)
+   • Usar item do inventário
    ```
+
+   **IMPORTANTE:** Use SEMPRE marcadores (•) em vez de números.
 
 **EXEMPLO:**
 
@@ -170,9 +175,9 @@ Status:
 
 O que você faz?
 
-1. Continuar atacando
-2. Tentar fugir (Teste de SORTE)
-3. Usar Poção de ENERGIA"
+• Continuar atacando
+• Tentar fugir (Teste de SORTE)
+• Usar Poção de ENERGIA"
 """
 
 COMBAT_PROMPT = ChatPromptTemplate.from_messages(
@@ -205,7 +210,7 @@ COMBAT_PROMPT = ChatPromptTemplate.from_messages(
 ---
 
 Narre este round de combate cinematicamente.
-Apresente as opções do jogador (continuar, fugir, usar item).
+Apresente as opções do jogador com marcadores (•): continuar atacando, tentar fugir, usar item.
 """,
         ),
     ]
@@ -245,9 +250,11 @@ Rolou: X vs {stat}: Y
 
 O que você faz agora?
 
-1. [Opção baseada no resultado]
-2. [Opção baseada no resultado]
+• [Opção baseada no resultado]
+• [Opção baseada no resultado]
 ```
+
+**IMPORTANTE:** Use SEMPRE marcadores (•) em vez de números.
 
 **EXEMPLO (SORTE):**
 
@@ -264,9 +271,9 @@ Você move o ferrolho com maestria. O baú abre sem um som! Dentro, você encont
 
 O que você faz?
 
-1. Pegar o tesouro e continuar
-2. Investigar o baú mais a fundo
-3. Seguir adiante rapidamente"
+• Pegar o tesouro e continuar explorando
+• Investigar o baú mais a fundo em busca de compartimentos secretos
+• Seguir adiante rapidamente antes que alguém apareça"
 """
 
 TEST_PROMPT = ChatPromptTemplate.from_messages(
@@ -293,7 +300,7 @@ TEST_PROMPT = ChatPromptTemplate.from_messages(
 ---
 
 Narre este teste de forma dramática e apresente as consequências.
-Ofereça 2-3 opções baseadas no resultado.
+Ofereça 2-3 opções com marcadores (•) baseadas no resultado.
 """,
         ),
     ]

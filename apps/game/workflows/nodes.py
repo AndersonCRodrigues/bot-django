@@ -25,6 +25,14 @@ from apps.game.narrative_templates import (
     format_luck_test_narrative,
     format_skill_test_narrative,
 )
+from apps.game.action_parser import parse_player_action
+from apps.game.action_validators import (
+    validate_pickup_item,
+    validate_use_item,
+    validate_navigation,
+    validate_talk_to_npc,
+)
+from apps.game.rag_extractors import extract_all_section_info
 
 logger = logging.getLogger("game.workflow")
 
@@ -208,10 +216,106 @@ def generate_narrative_node(state: GameState) -> Dict[str, Any]:
 
 
 def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
+    """
+    Gera narrativa geral usando arquitetura RAG-first:
+    1. Parse da ação do jogador (detectar intenção)
+    2. Extrair info do RAG (items, NPCs, exits)
+    3. Validar ação
+    4. Executar ação (se aplicável)
+    5. LLM narra o resultado
+    """
+    player_action = state["player_action"]
+    section_content = state.get("section_content", "")
+    current_section = state.get("current_section", 1)
+    inventory = state.get("inventory", [])
+
+    # 🎯 STEP 1: Parse da ação do jogador
+    parsed_action = parse_player_action(player_action)
+    action_type = parsed_action['type']
+    action_target = parsed_action.get('target')
+
+    logger.info(f"[general_narrative] Ação parseada: {action_type} (target: {action_target})")
+
+    # 🎯 STEP 2: Extrair informações do RAG
+    section_info = extract_all_section_info(section_content, current_section)
+    available_items = section_info.get('items', [])
+    available_exits = section_info.get('exits', [])
+    available_npcs = section_info.get('npcs', [])
+
+    logger.debug(
+        f"[general_narrative] RAG info: {len(available_items)} items, "
+        f"{len(available_exits)} exits, {len(available_npcs)} NPCs"
+    )
+
+    # 🎯 STEP 3 & 4: Validar e executar ação (baseado no tipo)
+    action_result = None
+    updates = {}
+
+    if action_type == 'pickup':
+        # Validar pickup
+        validation = validate_pickup_item(action_target, available_items, inventory)
+        if validation.valid:
+            # Executar: adicionar item ao inventário
+            add_item(state, action_target)
+            updates['inventory'] = state.get('inventory', []) + [action_target]
+            action_result = {
+                'success': True,
+                'message': f"Você pega {action_target}."
+            }
+            logger.info(f"[general_narrative] ✓ Item '{action_target}' adicionado")
+        else:
+            action_result = {
+                'success': False,
+                'message': validation.message
+            }
+            logger.warning(f"[general_narrative] ✗ Pickup falhou: {validation.reason}")
+
+    elif action_type == 'use_item':
+        # Validar uso de item
+        validation = validate_use_item(action_target, inventory)
+        if validation.valid:
+            # Executar: usar item (lógica específica por tipo de item)
+            use_result = use_item(state, action_target)
+            action_result = {
+                'success': True,
+                'message': f"Você usa {action_target}.",
+                'effect': use_result
+            }
+            logger.info(f"[general_narrative] ✓ Item '{action_target}' usado")
+        else:
+            action_result = {
+                'success': False,
+                'message': validation.message
+            }
+            logger.warning(f"[general_narrative] ✗ Use item falhou: {validation.reason}")
+
+    elif action_type == 'talk':
+        # Validar conversa com NPC
+        validation = validate_talk_to_npc(action_target, available_npcs)
+        if not validation.valid:
+            action_result = {
+                'success': False,
+                'message': validation.message
+            }
+            logger.warning(f"[general_narrative] ✗ Talk falhou: {validation.reason}")
+        else:
+            # NPC válido - LLM vai gerar diálogo
+            action_result = {
+                'success': True,
+                'message': f"Você conversa com {action_target}."
+            }
+
+    # 🎯 STEP 5: LLM narra o resultado
     llm = get_llm(temperature=0.8)
     chain = NARRATIVE_PROMPT | llm
     recent_history = _format_recent_history(state.get("history", []))
-    inventory_str = ", ".join(state.get("inventory", [])) or "Vazio"
+    inventory_str = ", ".join(updates.get('inventory', inventory)) or "Vazio"
+
+    # Preparar contexto enriquecido com resultado da validação
+    narrative_context = state.get("section_content", "")
+    if action_result:
+        narrative_context += f"\n\n[Resultado da ação: {action_result['message']}]"
+
     response = chain.invoke(
         {
             "character_name": state["character_name"],
@@ -222,19 +326,28 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
             "gold": state["gold"],
             "provisions": state["provisions"],
             "inventory": inventory_str,
-            "current_section": state["current_section"],
-            "section_content": state.get("section_content", ""),
-            "player_action": state["player_action"],
+            "current_section": current_section,
+            "section_content": narrative_context,
+            "player_action": player_action,
             "recent_history": recent_history,
             "flags": json.dumps(state.get("flags", {}), indent=2),
         }
     )
+
     narrative_text = response.content
+
+    # Se ação falhou, priorizar mensagem de erro
+    if action_result and not action_result['success']:
+        narrative_text = f"{action_result['message']}\n\n{narrative_text}"
+
     logger.info(
-        f"[generate_narrative_node] Narrativa gerada: {len(narrative_text)} chars"
+        f"[generate_narrative_node] Narrativa gerada: {len(narrative_text)} chars "
+        f"(ação: {action_type}, sucesso: {action_result.get('success') if action_result else 'N/A'})"
     )
+
     return {
         **state,
+        **updates,
         "narrative_response": narrative_text,
         "next_step": "update_state",
     }

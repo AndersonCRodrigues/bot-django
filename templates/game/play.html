@@ -4,10 +4,10 @@
 {% block title %}{{ adventure.title }} - Jogando{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-[#0A0A0A] flex">
+<div class="min-h-screen bg-[#0A0A0A]">
 
-    <!-- Painel Lateral Flutuante -->
-    <div id="stats-panel" class="fixed right-0 top-0 h-full w-80 bg-[#0F0F0F] border-l border-[#27272A] transform translate-x-full transition-transform duration-300 z-50 overflow-y-auto">
+    <!-- Painel Lateral Flutuante (Mobile/Desktop) -->
+    <div id="stats-panel" class="fixed right-0 top-0 h-full w-full sm:w-80 bg-[#0F0F0F] border-l border-[#27272A] transform translate-x-full transition-transform duration-300 z-50 overflow-y-auto">
         <div class="p-6">
             <!-- Fechar Painel -->
             <button onclick="toggleStatsPanel()" class="absolute top-4 right-4 text-[#71717A] hover:text-white">
@@ -28,7 +28,7 @@
             <!-- Stats -->
             <div class="space-y-3 mb-6">
                 <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-3">
-                    <div class="flex justify-between items-center mb-2">
+                    <div class="flex justify-between items-center">
                         <span class="text-[#71717A] text-xs uppercase">Habilidade</span>
                         <span class="text-white font-bold" id="stat-skill">{{ character.skill }}</span>
                     </div>
@@ -37,27 +37,25 @@
                 <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-3">
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-[#71717A] text-xs uppercase">Energia</span>
-                        <span class="text-white font-bold" id="stat-stamina">{{ character.stamina }}</span>
+                        <span class="text-white font-bold" id="stat-stamina">{{ character.stamina }}/{{ character.initial_stamina }}</span>
                     </div>
                     <div class="w-full bg-[#1A1A1A] rounded-full h-2">
                         <div class="h-full transition-all duration-300 {% if character.stamina < 5 %}bg-gradient-to-r from-red-600 to-orange-500{% else %}bg-gradient-to-r from-[#10B981] to-[#6366F1]{% endif %} rounded-full"
-                             style="width: {% widthratio character.stamina character.initial_stamina 100 %}%"
+                             style="width: {% if character.initial_stamina > 0 %}{% widthratio character.stamina character.initial_stamina 100 %}{% else %}0{% endif %}%"
                              id="bar-stamina"></div>
                     </div>
-                    <p class="text-[#52525B] text-xs mt-1">Máx: {{ character.initial_stamina }}</p>
                 </div>
 
                 <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-3">
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-[#71717A] text-xs uppercase">Sorte</span>
-                        <span class="text-white font-bold" id="stat-luck">{{ character.luck }}</span>
+                        <span class="text-white font-bold" id="stat-luck">{{ character.luck }}/{{ character.initial_luck }}</span>
                     </div>
                     <div class="w-full bg-[#1A1A1A] rounded-full h-2">
                         <div class="h-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all duration-300 rounded-full"
-                             style="width: {% widthratio character.luck character.initial_luck 100 %}%"
+                             style="width: {% if character.initial_luck > 0 %}{% widthratio character.luck character.initial_luck 100 %}{% else %}0{% endif %}%"
                              id="bar-luck"></div>
                     </div>
-                    <p class="text-[#52525B] text-xs mt-1">Máx: {{ character.initial_luck }}</p>
                 </div>
 
                 <div class="bg-[#0A0A0A] border border-[#27272A] rounded-lg p-3">
@@ -76,7 +74,7 @@
             </div>
 
             <!-- Inventário -->
-            <div class="mb-6">
+            <div>
                 <div class="flex items-center gap-2 mb-3">
                     <span class="text-xl">🎒</span>
                     <h3 class="text-white font-semibold">Inventário</h3>
@@ -89,60 +87,47 @@
                             </div>
                         {% endfor %}
                     {% else %}
-                        <div class="text-center text-[#52525B] text-sm py-4">
-                            Vazio
-                        </div>
+                        <div class="text-center text-[#52525B] text-sm py-4">Vazio</div>
                     {% endif %}
                 </div>
-            </div>
-
-            <!-- Ações Rápidas -->
-            <div class="space-y-2">
-                <button onclick="quickAction('Usar provisão para recuperar 4 pontos de energia')" class="w-full bg-[#0A0A0A] border border-[#27272A] text-[#A1A1AA] hover:text-white hover:border-[#10B981] rounded-lg px-3 py-2 text-sm transition-all text-left">
-                    🍖 Comer Provisão
-                </button>
-                <button onclick="quickAction('Testar sorte')" class="w-full bg-[#0A0A0A] border border-[#27272A] text-[#A1A1AA] hover:text-white hover:border-[#F59E0B] rounded-lg px-3 py-2 text-sm transition-all text-left">
-                    🎲 Testar Sorte
-                </button>
             </div>
         </div>
     </div>
 
     <!-- Área Principal -->
-    <div class="flex-1 flex flex-col max-w-5xl mx-auto w-full">
+    <div class="flex flex-col h-screen">
 
         <!-- Header -->
-        <div class="bg-[#0F0F0F] border-b border-[#27272A] px-6 py-4 flex items-center justify-between sticky top-0 z-40">
-            <div class="flex items-center gap-4">
-                <a href="{% url 'accounts:profile' %}" class="text-[#71717A] hover:text-white transition-colors">
+        <div class="bg-[#0F0F0F] border-b border-[#27272A] px-4 sm:px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+                <a href="{% url 'accounts:profile' %}" class="text-[#71717A] hover:text-white transition-colors flex-shrink-0">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>
                 </a>
-                <div>
-                    <h1 class="text-white font-bold text-lg">{{ adventure.title }}</h1>
-                    <p class="text-[#71717A] text-xs">Jogando como {{ character.name }}</p>
+                <div class="min-w-0 flex-1">
+                    <h1 class="text-white font-bold text-base sm:text-lg truncate">{{ adventure.title }}</h1>
+                    <p class="text-[#71717A] text-xs truncate">{{ character.name }}</p>
                 </div>
             </div>
-            <button onclick="toggleStatsPanel()" class="bg-[#0A0A0A] border border-[#27272A] text-[#A1A1AA] hover:text-white hover:border-[#6366F1] rounded-lg px-4 py-2 text-sm transition-all">
-                <span class="hidden sm:inline">Personagem</span>
-                <span class="sm:hidden">📊</span>
+            <button onclick="toggleStatsPanel()" class="bg-[#0A0A0A] border border-[#27272A] text-[#A1A1AA] hover:text-white hover:border-[#6366F1] rounded-lg px-3 sm:px-4 py-2 text-sm transition-all flex-shrink-0">
+                📊
             </button>
         </div>
 
         <!-- Área de Chat -->
-        <div id="chat-area" class="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+        <div id="chat-area" class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-3 sm:space-y-4">
             {% for entry in history %}
                 {% if entry.player_action %}
                     <div class="flex justify-end">
-                        <div class="max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-4 py-3">
+                        <div class="max-w-[85%] sm:max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-3 sm:px-4 py-2 sm:py-3">
                             <p class="text-white text-sm">{{ entry.player_action }}</p>
                         </div>
                     </div>
                 {% endif %}
                 {% if entry.narrative %}
                     <div class="flex justify-start">
-                        <div class="max-w-3xl bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-4 py-3">
+                        <div class="max-w-[90%] sm:max-w-3xl bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-3 sm:px-4 py-2 sm:py-3">
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-[#F59E0B] text-xs font-semibold uppercase">Narrador</span>
                             </div>
@@ -154,7 +139,7 @@
 
             <!-- Loading Indicator -->
             <div id="typing-indicator" class="hidden flex justify-start">
-                <div class="bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-4 py-3">
+                <div class="bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-3 sm:px-4 py-2 sm:py-3">
                     <div class="flex items-center gap-2">
                         <div class="flex gap-1">
                             <div class="w-2 h-2 bg-[#71717A] rounded-full animate-bounce" style="animation-delay: 0ms"></div>
@@ -168,23 +153,23 @@
         </div>
 
         <!-- Input de Ação -->
-        <div class="bg-[#0F0F0F] border-t border-[#27272A] px-6 py-4 sticky bottom-0">
-            <form id="action-form" class="flex gap-3">
+        <div class="bg-[#0F0F0F] border-t border-[#27272A] px-4 sm:px-6 py-3 sm:py-4">
+            <form id="action-form" class="flex gap-2 sm:gap-3">
                 {% csrf_token %}
                 <input
                     type="text"
                     id="action-input"
-                    placeholder="Digite sua ação... (ex: 'Eu abro a porta', 'Atacar o goblin')"
-                    class="flex-1 bg-[#0A0A0A] border border-[#27272A] rounded-lg px-4 py-3 text-sm text-white placeholder-[#52525B] focus:outline-none focus:ring-2 focus:ring-[#6366F1] transition-all"
+                    placeholder="Digite sua ação..."
+                    class="flex-1 bg-[#0A0A0A] border border-[#27272A] rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm text-white placeholder-[#52525B] focus:outline-none focus:ring-2 focus:ring-[#6366F1] transition-all"
                     autocomplete="off"
                     required
                 >
                 <button
                     type="submit"
                     id="action-btn"
-                    class="bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold px-6 py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    class="bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
-                    Enviar
+                    ➤
                 </button>
             </form>
         </div>
@@ -196,6 +181,8 @@
 <script>
 const sessionId = '{{ session.session_id }}';
 const csrfToken = '{{ csrf_token }}';
+const initialStamina = {{ character.initial_stamina }};
+const initialLuck = {{ character.initial_luck }};
 
 // Toggle stats panel
 function toggleStatsPanel() {
@@ -213,16 +200,11 @@ function scrollToBottom() {
     }
 }
 
-// Quick action
-function quickAction(action) {
-    document.getElementById('action-input').value = action;
-    document.getElementById('action-form').dispatchEvent(new Event('submit'));
-}
-
 // Use item
 function useItem(item) {
     document.getElementById('action-input').value = `Usar ${item}`;
     toggleStatsPanel();
+    document.getElementById('action-input').focus();
 }
 
 // Update stats
@@ -230,20 +212,28 @@ function updateStats(stats) {
     if (!stats) return;
 
     document.getElementById('stat-skill').textContent = stats.skill || 0;
-    document.getElementById('stat-stamina').textContent = stats.stamina || 0;
-    document.getElementById('stat-luck').textContent = stats.luck || 0;
+    document.getElementById('stat-stamina').textContent = `${stats.stamina || 0}/${initialStamina}`;
+    document.getElementById('stat-luck').textContent = `${stats.luck || 0}/${initialLuck}`;
     document.getElementById('stat-gold').textContent = stats.gold || 0;
     document.getElementById('stat-provisions').textContent = stats.provisions || 0;
 
     // Update bars
-    const staminaPercent = (stats.stamina / {{ character.initial_stamina }}) * 100;
-    const luckPercent = (stats.luck / {{ character.initial_luck }}) * 100;
+    const staminaPercent = initialStamina > 0 ? (stats.stamina / initialStamina) * 100 : 0;
+    const luckPercent = initialLuck > 0 ? (stats.luck / initialLuck) * 100 : 0;
 
     const staminaBar = document.getElementById('bar-stamina');
     const luckBar = document.getElementById('bar-luck');
 
-    if (staminaBar) staminaBar.style.width = staminaPercent + '%';
-    if (luckBar) luckBar.style.width = luckPercent + '%';
+    if (staminaBar) {
+        staminaBar.style.width = Math.max(0, Math.min(100, staminaPercent)) + '%';
+        // Change color if low
+        if (stats.stamina < 5) {
+            staminaBar.className = 'h-full transition-all duration-300 bg-gradient-to-r from-red-600 to-orange-500 rounded-full';
+        } else {
+            staminaBar.className = 'h-full transition-all duration-300 bg-gradient-to-r from-[#10B981] to-[#6366F1] rounded-full';
+        }
+    }
+    if (luckBar) luckBar.style.width = Math.max(0, Math.min(100, luckPercent)) + '%';
 }
 
 // Update inventory
@@ -270,7 +260,7 @@ function addMessage(type, content) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'flex justify-end';
         messageDiv.innerHTML = `
-            <div class="max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-4 py-3">
+            <div class="max-w-[85%] sm:max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-3 sm:px-4 py-2 sm:py-3">
                 <p class="text-white text-sm">${content}</p>
             </div>
         `;
@@ -279,7 +269,7 @@ function addMessage(type, content) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'flex justify-start';
         messageDiv.innerHTML = `
-            <div class="max-w-3xl bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-4 py-3">
+            <div class="max-w-[90%] sm:max-w-3xl bg-[#0F0F0F] border border-[#27272A] rounded-2xl rounded-tl-sm px-3 sm:px-4 py-2 sm:py-3">
                 <div class="flex items-center gap-2 mb-2">
                     <span class="text-[#F59E0B] text-xs font-semibold uppercase">Narrador</span>
                 </div>
@@ -354,7 +344,7 @@ document.getElementById('action-form').addEventListener('submit', async function
                     } else {
                         alert('💀 Game Over! Sua jornada terminou...');
                     }
-                    window.location.reload();
+                    window.location.href = '{% url "accounts:profile" %}';
                 }, 500);
             }
         } else {

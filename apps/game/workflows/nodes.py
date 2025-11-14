@@ -311,27 +311,28 @@ def update_game_state_node(state: GameState) -> Dict[str, Any]:
         if not session:
             logger.error(f"[update_game_state_node] Sessão não encontrada")
             return {**state, "next_step": "end", "error": "Sessão não encontrada"}
-        update_character_stats(
-            character_id=state["character_id"],
-            updates={
-                "stamina": (
-                    state["stamina"]
-                    - session.history[-1].get("stamina", state["stamina"])
-                    if session.history
-                    else 0
-                ),
-                "luck": (
-                    state["luck"] - session.history[-1].get("luck", state["luck"])
-                    if session.history
-                    else 0
-                ),
-                "gold": (
-                    state.get("gold", 0) - session.history[-1].get("gold", 0)
-                    if session.history
-                    else 0
-                ),
-            },
-        )
+
+        # Atualizar personagem diretamente
+        character = Character.find_by_id(state["character_id"], state["user_id"])
+        if character:
+            # Calcular diferenças
+            old_stamina = session.history[-1].get("stamina", state["stamina"]) if session.history else state["stamina"]
+            old_luck = session.history[-1].get("luck", state["luck"]) if session.history else state["luck"]
+            old_gold = session.history[-1].get("gold", state.get("gold", 0)) if session.history else state.get("gold", 0)
+
+            stamina_diff = state["stamina"] - old_stamina
+            luck_diff = state["luck"] - old_luck
+            gold_diff = state.get("gold", 0) - old_gold
+
+            # Atualizar apenas se houver mudanças
+            if stamina_diff != 0:
+                character.stamina = max(0, state["stamina"])
+            if luck_diff != 0:
+                character.luck = max(0, state["luck"])
+            if gold_diff != 0:
+                character.gold = max(0, state.get("gold", 0))
+
+            character.save()
         history_entry = {
             "turn": state.get("turn_number", len(session.history) + 1),
             "player_action": state["player_action"],
@@ -356,7 +357,7 @@ def update_game_state_node(state: GameState) -> Dict[str, Any]:
         return {
             **state,
             "turn_number": state.get("turn_number", 0) + 1,
-            "achievements_unlocked": achievements_unlocked,  # Novos achievements
+            "achievements_unlocked": [],  # Achievements temporariamente desabilitados
             "next_step": "check_game_over",
         }
     except Exception as e:

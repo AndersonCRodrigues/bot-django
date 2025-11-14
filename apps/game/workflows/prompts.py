@@ -119,13 +119,13 @@ Se a seção indicar combate/teste, inclua nas opções.
 Sua resposta deve terminar com um bloco JSON estruturado:
 
 ```json
-{
+{{
   "options": [
-    {"type": "navigation", "text": "Ir para o corredor da esquerda", "target": "corredor"},
-    {"type": "test_skill", "text": "Testar HABILIDADE para forçar a porta", "stat": "HABILIDADE"},
-    {"type": "examine", "text": "Examinar o baú misterioso", "target": "baú"}
+    {{"type": "navigation", "text": "Ir para o corredor da esquerda", "target": "corredor"}},
+    {{"type": "test_skill", "text": "Testar HABILIDADE para forçar a porta", "stat": "HABILIDADE"}},
+    {{"type": "examine", "text": "Examinar o baú misterioso", "target": "baú"}}
   ]
-}
+}}
 ```
 
 Tipos de opção válidos:

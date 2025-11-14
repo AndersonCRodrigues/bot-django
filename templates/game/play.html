@@ -138,12 +138,14 @@
                 {% endif %}
 
                 {% for entry in history %}
-                    {% if entry.player_action and not entry.player_action|startswith:"[SYSTEM]" %}
-                        <div class="flex justify-end">
-                            <div class="max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-4 py-3">
-                                <p class="text-white text-sm">{{ entry.player_action }}</p>
+                    {% if entry.player_action %}
+                        {% if entry.player_action|slice:":8" != "[SYSTEM]" %}
+                            <div class="flex justify-end">
+                                <div class="max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-4 py-3">
+                                    <p class="text-white text-sm">{{ entry.player_action }}</p>
+                                </div>
                             </div>
-                        </div>
+                        {% endif %}
                     {% endif %}
                     {% if entry.narrative %}
                         <div class="flex justify-start">

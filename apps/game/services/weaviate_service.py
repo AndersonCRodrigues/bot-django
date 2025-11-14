@@ -44,10 +44,13 @@ def get_weaviate_client():
 
 
 def get_embedding_model():
-    return GoogleGenerativeAIEmbeddings(
-        model="models/text-embedding-004",
-        google_api_key=settings.GEMINI_API_KEY,
-    )
+    """
+    🎯 Retorna cliente de embeddings global.
+
+    IMPORTANTE: Sempre retorna a MESMA instância global.
+    """
+    from apps.game.llm_client import embedding_client
+    return embedding_client
 
 
 def create_vector_store(class_name: str) -> Optional[WeaviateVectorStore]:

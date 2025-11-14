@@ -152,7 +152,8 @@ def parse_player_action(action_text: str, context: Optional[Dict[str, Any]] = No
         }
 
     # ========== TEST SKILL ==========
-    if 'habilidade' in action_lower or 'testar habilidade' in action_lower:
+    skill_keywords = ['habilidade', 'testar habilidade', 'teste de habilidade', 'forçar', 'arrombar']
+    if any(keyword in action_lower for keyword in skill_keywords):
         logger.debug("[parse_action] Detectado: test_skill")
         return {
             'type': 'test_skill',

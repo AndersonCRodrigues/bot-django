@@ -321,67 +321,74 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
     if action_type == 'combat' and not state.get('in_combat'):
         logger.info(f"[general_narrative] ⚔️ Iniciando combate com '{action_target}'")
 
-        # Extrair dados do inimigo do RAG ou usar padrão
-        enemy_data = section_info.get('combat')
+        # 🎯 Prioridade 1: Usar enemies capturados da opção estruturada (LLM extraiu do RAG)
+        pending_enemies = state.get('pending_combat_enemies', [])
+        enemies_list = []
 
-        # Determinar nome real do inimigo (não pronomes genéricos)
-        enemy_name = None
-
-        if enemy_data and enemy_data.get('name'):
-            # Caso 1: Dados de combate estruturados no RAG
-            enemy_name = enemy_data['name']
-        elif available_npcs:
-            # Caso 2: Sem dados de combate, mas há NPCs na seção - usar primeiro NPC
-            enemy_name = available_npcs[0]
-            logger.info(f"[general_narrative] 📌 Usando NPC da seção como inimigo: {enemy_name}")
-        elif action_target and action_target.lower() not in ['ele', 'ela', 'enemy', 'inimigo']:
-            # Caso 3: Target específico (não é pronome genérico)
-            enemy_name = action_target
+        if pending_enemies:
+            logger.info(f"[general_narrative] 📋 Usando {len(pending_enemies)} inimigos da opção estruturada")
+            for enemy in pending_enemies:
+                enemies_list.append({
+                    'name': enemy['name'],
+                    'skill': enemy['skill'],
+                    'stamina': enemy['stamina'],
+                    'max_stamina': enemy['stamina']
+                })
         else:
-            # Caso 4: Fallback - tentar extrair do texto do RAG
-            import re
-            # Procurar padrão: "Nome (HABILIDADE X, ENERGIA Y)"
-            combat_match = re.search(r'([A-Z][a-zà-ú\-]+(?:\s+[A-Z][a-zà-ú\-]+)*)\s*\(HABILIDADE\s+(\d+),\s*ENERGIA\s+(\d+)\)', section_content)
-            if combat_match:
-                enemy_name = combat_match.group(1)
-                logger.info(f"[general_narrative] 📌 Extraído do RAG: {enemy_name}")
+            # 🎯 Prioridade 2: Extrair do RAG ou usar fallback
+            enemy_data = section_info.get('combat')
+            enemy_name = None
+
+            if enemy_data and enemy_data.get('name'):
+                enemy_name = enemy_data['name']
+            elif available_npcs:
+                enemy_name = available_npcs[0]
+                logger.info(f"[general_narrative] 📌 Usando NPC da seção: {enemy_name}")
+            elif action_target and action_target.lower() not in ['ele', 'ela', 'enemy', 'inimigo']:
+                enemy_name = action_target
             else:
-                enemy_name = 'Inimigo Desconhecido'
-                logger.warning(f"[general_narrative] ⚠️ Não foi possível identificar inimigo, usando genérico")
+                import re
+                combat_match = re.search(r'([A-Z][a-zà-ú\-]+(?:\s+[A-Z][a-zà-ú\-]+)*)\s*\(HABILIDADE\s+(\d+),\s*ENERGIA\s+(\d+)\)', section_content)
+                if combat_match:
+                    enemy_name = combat_match.group(1)
+                    logger.info(f"[general_narrative] 📌 Extraído do RAG via regex: {enemy_name}")
+                else:
+                    enemy_name = 'Inimigo Desconhecido'
+                    logger.warning(f"[general_narrative] ⚠️ Não identificou inimigo, usando genérico")
 
-        if not enemy_data:
-            logger.warning(f"[general_narrative] ⚠️ Sem dados de combate no RAG, usando stats padrão")
-            enemy_data = {
-                'name': enemy_name,
-                'skill': 7,
-                'stamina': 5
-            }
-        else:
-            # Atualizar nome se extraímos um melhor
-            enemy_data['name'] = enemy_name
+            if not enemy_data:
+                logger.warning(f"[general_narrative] ⚠️ Sem dados de combate, usando stats padrão")
+                enemy_data = {'name': enemy_name, 'skill': 7, 'stamina': 5}
+            else:
+                enemy_data['name'] = enemy_name
 
-        # Iniciar combate
-        combat_info = start_combat(
-            enemy_name=enemy_data['name'],
-            enemy_skill=enemy_data.get('skill', 7),
-            enemy_stamina=enemy_data.get('stamina', 5)
-        )
+            enemies_list.append({
+                'name': enemy_data['name'],
+                'skill': enemy_data.get('skill', 7),
+                'stamina': enemy_data.get('stamina', 5),
+                'max_stamina': enemy_data.get('stamina', 5)
+            })
 
-        # Atualizar state com dados de combate
+        # Atualizar state com dados de combate (estrutura para múltiplos inimigos)
         updates['in_combat'] = True
         updates['combat_data'] = {
-            'enemy_name': combat_info['enemy']['name'],
-            'enemy_skill': combat_info['enemy']['skill'],
-            'enemy_stamina': combat_info['enemy']['stamina'],
-            'enemy_max_stamina': combat_info['enemy']['stamina'],
-            'rounds': 0
+            'enemies': enemies_list,
+            'current_enemy_index': 0,
+            'rounds': 0,
+            'total_rounds': 0  # Contador global de rounds (todos os inimigos)
         }
 
-        logger.info(f"[general_narrative] ✓ Combate iniciado: {combat_info['enemy']['name']} (HAB {combat_info['enemy']['skill']}, ENERGIA {combat_info['enemy']['stamina']})")
+        # Limpar pending_combat_enemies
+        updates['pending_combat_enemies'] = None
 
-        # Atualizar state agora para que _generate_combat_narrative possa usá-lo
+        logger.info(f"[general_narrative] ✓ Combate iniciado com {len(enemies_list)} inimigo(s):")
+        for i, enemy in enumerate(enemies_list):
+            logger.info(f"  [{i}] {enemy['name']} (HAB {enemy['skill']}, ENERGIA {enemy['stamina']})")
+
+        # Atualizar state agora
         state['in_combat'] = True
         state['combat_data'] = updates['combat_data']
+        state['pending_combat_enemies'] = None
 
         # Chamar fluxo de combate para executar primeiro round
         return _generate_combat_narrative(state)
@@ -503,6 +510,17 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
     else:
         logger.warning("⚠️ Nenhuma opção estruturada válida!")
 
+    # 🎯 CAPTURAR ENEMIES de opções de combate para usar posteriormente
+    pending_enemies = None
+    for opt in valid_options:
+        if opt.get('type') == 'combat' and opt.get('enemies'):
+            pending_enemies = opt['enemies']
+            logger.info(f"[general_narrative] 📋 Capturados {len(pending_enemies)} inimigos da opção de combate")
+            break
+
+    if pending_enemies:
+        updates['pending_combat_enemies'] = pending_enemies
+
     # Se ação falhou, priorizar mensagem de erro
     if action_result and not action_result['success']:
         narrative_text = f"{action_result['message']}\n\n{narrative_text}"
@@ -535,24 +553,42 @@ def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
             "narrative_response": "Erro: você não está em combate.",
             "next_step": "end",
         }
+
+    # 🎯 Suporte a múltiplos inimigos
+    enemies = combat_data.get("enemies", [])
+    current_index = combat_data.get("current_enemy_index", 0)
+
+    if not enemies or current_index >= len(enemies):
+        logger.error("[generate_combat_narrative] Inimigo atual inválido")
+        return {
+            **state,
+            "narrative_response": "Erro: dados de combate corrompidos.",
+            "next_step": "end",
+        }
+
+    current_enemy = enemies[current_index]
+    logger.info(f"[generate_combat_narrative] Round vs {current_enemy['name']} (índice {current_index}/{len(enemies)-1})")
+
+    # Executar round de combate
     combat_result = combat_round(
         character_skill=state["skill"],
         character_stamina=state["stamina"],
-        enemy_name=combat_data["enemy_name"],
-        enemy_skill=combat_data["enemy_skill"],
-        enemy_stamina=combat_data["enemy_stamina"],
+        enemy_name=current_enemy["name"],
+        enemy_skill=current_enemy["skill"],
+        enemy_stamina=current_enemy["stamina"],
     )
-    new_combat_data = {
-        **combat_data,
-        "enemy_stamina": combat_result["enemy_stamina"],
-        "rounds": combat_data.get("rounds", 0) + 1,
-    }
 
-    # 🎯 OTIMIZAÇÃO: Usar template Python em vez de LLM (evita 429 errors)
+    # Atualizar dados do inimigo atual
+    enemies[current_index]["stamina"] = combat_result["enemy_stamina"]
+
+    # Incrementar contadores
+    total_rounds = combat_data.get("total_rounds", 0) + 1
+
+    # 🎯 OTIMIZAÇÃO: Usar template Python em vez de LLM
     narrative_text = format_combat_narrative(
-        enemy_name=combat_data["enemy_name"],
-        enemy_skill=combat_data["enemy_skill"],
-        enemy_stamina=combat_data["enemy_stamina"],
+        enemy_name=current_enemy["name"],
+        enemy_skill=current_enemy["skill"],
+        enemy_stamina=current_enemy["stamina"],
         character_skill=state["skill"],
         character_stamina=state["stamina"],
         character_roll=combat_result["character_roll"],
@@ -564,30 +600,63 @@ def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
         new_enemy_stamina=combat_result["enemy_stamina"],
     )
 
-    in_combat = combat_result["winner"] is None
-    game_over = combat_result["winner"] == "enemy"
-    victory = combat_result["winner"] == "character"
+    # 🎯 Determinar estado do combate
+    in_combat = True
+    game_over = False
+    victory = False
 
-    # 🎯 Gerar opções estruturadas para combate
+    if combat_result["winner"] == "character":
+        # Inimigo atual derrotado
+        logger.info(f"[generate_combat_narrative] ✅ {current_enemy['name']} derrotado!")
+
+        # Verificar se há mais inimigos
+        if current_index + 1 < len(enemies):
+            # Há mais inimigos - avançar para o próximo
+            next_enemy = enemies[current_index + 1]
+            narrative_text += f"\n\n🎯 {current_enemy['name']} foi derrotado! Mas {next_enemy['name']} avança para atacar!"
+            current_index += 1
+            logger.info(f"[generate_combat_narrative] ⚔️ Próximo inimigo: {next_enemy['name']}")
+        else:
+            # Todos os inimigos derrotados - vitória completa
+            in_combat = False
+            victory = True
+            narrative_text += f"\n\n🎉 Você derrotou todos os inimigos!"
+
+    elif combat_result["winner"] == "enemy":
+        # Jogador morreu
+        in_combat = False
+        game_over = True
+        logger.info(f"[generate_combat_narrative] 💀 Jogador derrotado por {current_enemy['name']}")
+
+    # Atualizar combat_data
+    new_combat_data = {
+        "enemies": enemies,
+        "current_enemy_index": current_index,
+        "rounds": combat_data.get("rounds", 0) + 1,
+        "total_rounds": total_rounds
+    }
+
+    # 🎯 Gerar opções estruturadas
     structured_options = []
     if in_combat:
-        # Combate continua - oferecer opções de ataque
+        # Combate continua
         structured_options = [
             {"type": "combat", "text": "⚔️ Continuar atacando"},
+            {"type": "test_luck", "text": "🍀 Usar SORTE (se acertar: +2 dano)"},
             {"type": "exploration", "text": "🏃 Tentar fugir (arriscado)"},
         ]
     elif victory:
-        # Vitória - oferecer opções de exploração
+        # Vitória
         structured_options = [
-            {"type": "exploration", "text": "🔍 Procurar itens no corpo do inimigo"},
+            {"type": "exploration", "text": "🔍 Procurar itens nos corpos"},
             {"type": "exploration", "text": "➡️ Continuar explorando"},
         ]
-    # Se game_over, não precisa de opções (jogo terminou)
 
     logger.info(
-        f"[generate_combat_narrative] Round {new_combat_data['rounds']} completo. "
-        f"Winner: {combat_result['winner']}"
+        f"[generate_combat_narrative] Round {total_rounds} completo. "
+        f"Inimigo {current_index+1}/{len(enemies)}, Status: {'combate' if in_combat else 'fim'}"
     )
+
     return {
         **state,
         "stamina": combat_result["character_stamina"],
@@ -710,11 +779,21 @@ def update_game_state_node(state: GameState) -> Dict[str, Any]:
         if state.get("in_combat"):
             session.flags["in_combat"] = True
             session.flags["combat_data"] = state.get("combat_data")
-            logger.info(f"[update_game_state_node] 💾 Combate persistido: {session.flags['combat_data']}")
+            combat_data = state.get("combat_data", {})
+            enemies = combat_data.get("enemies", [])
+            current = combat_data.get("current_enemy_index", 0)
+            if enemies and current < len(enemies):
+                logger.info(f"[update_game_state_node] 💾 Combate persistido: {len(enemies)} inimigo(s), atual: {enemies[current]['name']}")
         else:
             # Limpar flags de combate se não estiver em combate
             session.flags.pop("in_combat", None)
             session.flags.pop("combat_data", None)
+
+        # Persistir pending_combat_enemies se existir
+        if state.get("pending_combat_enemies"):
+            session.flags["pending_combat_enemies"] = state.get("pending_combat_enemies")
+        else:
+            session.flags.pop("pending_combat_enemies", None)
 
         if state.get("game_over"):
             session.status = GameSession.STATUS_DEAD
@@ -792,9 +871,13 @@ def initialize_state_node(
         # 🎯 RESTAURAR ESTADO DE COMBATE (se existir)
         in_combat = session.flags.get("in_combat", False)
         combat_data = session.flags.get("combat_data")
+        pending_combat_enemies = session.flags.get("pending_combat_enemies")
 
         if in_combat and combat_data:
-            logger.info(f"[initialize_state_node] ⚔️ Combate restaurado: {combat_data['enemy_name']} (ENERGIA: {combat_data.get('enemy_stamina')})")
+            enemies = combat_data.get("enemies", [])
+            current = combat_data.get("current_enemy_index", 0)
+            if enemies and current < len(enemies):
+                logger.info(f"[initialize_state_node] ⚔️ Combate restaurado: {len(enemies)} inimigo(s), atual: {enemies[current]['name']} (ENERGIA: {enemies[current].get('stamina')})")
 
         state: GameState = {
             "session_id": session_id,
@@ -827,6 +910,7 @@ def initialize_state_node(
             "action_type": "",
             "in_combat": in_combat,
             "combat_data": combat_data,
+            "pending_combat_enemies": pending_combat_enemies,
             "flags": session.flags,
             "narrative_response": "",
             "available_actions": [],

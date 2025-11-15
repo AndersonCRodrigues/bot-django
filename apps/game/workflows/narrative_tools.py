@@ -10,6 +10,14 @@ from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
 
+class EnemyData(BaseModel):
+    """Dados de um inimigo para combate."""
+
+    name: str = Field(description="Nome do inimigo (extraído do RAG)")
+    skill: int = Field(description="HABILIDADE do inimigo", ge=1, le=12)
+    stamina: int = Field(description="ENERGIA inicial do inimigo", ge=1, le=30)
+
+
 class GameOption(BaseModel):
     """Uma opção de ação disponível para o jogador."""
 
@@ -42,6 +50,11 @@ class GameOption(BaseModel):
     section: Optional[int] = Field(
         default=None,
         description="Número da seção de destino para navigation"
+    )
+
+    enemies: Optional[List[EnemyData]] = Field(
+        default=None,
+        description="Lista de inimigos quando type='combat'. Extrair do RAG com formato: Nome (HABILIDADE X, ENERGIA Y)"
     )
 
 

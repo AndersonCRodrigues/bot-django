@@ -234,6 +234,22 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
     current_section = state.get("current_section", 1)
     inventory = state.get("inventory", [])
 
+    # 🎯 DETECTAR SE ESTÁ EM COMBATE (redirecionar para fluxo de combate)
+    if state.get("in_combat"):
+        # Jogador está em combate - processar próximo round
+        logger.info("[general_narrative] ⚔️ Jogador em combate - continuando round")
+        return _generate_combat_narrative(state)
+
+    # 🎯 DETECTAR SE É O INÍCIO DO JOGO (primeira narrativa)
+    is_initial_action = "[SYSTEM]" in player_action and "Iniciar" in player_action
+    adventure_intro = ""
+
+    if is_initial_action:
+        adventure_title = state.get("adventure_title", "")
+        adventure_description = state.get("adventure_description", "")
+        logger.info("[general_narrative] 🎬 Detectado início do jogo - incluindo introdução da aventura")
+        adventure_intro = f"\n\n**📖 {adventure_title}**\n\n{adventure_description}\n\n---\n\n"
+
     # 🎯 STEP 1: Parse da ação do jogador
     parsed_action = parse_player_action(player_action)
     action_type = parsed_action['type']
@@ -308,19 +324,45 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
         # Extrair dados do inimigo do RAG ou usar padrão
         enemy_data = section_info.get('combat')
 
+        # Determinar nome real do inimigo (não pronomes genéricos)
+        enemy_name = None
+
+        if enemy_data and enemy_data.get('name'):
+            # Caso 1: Dados de combate estruturados no RAG
+            enemy_name = enemy_data['name']
+        elif available_npcs:
+            # Caso 2: Sem dados de combate, mas há NPCs na seção - usar primeiro NPC
+            enemy_name = available_npcs[0]
+            logger.info(f"[general_narrative] 📌 Usando NPC da seção como inimigo: {enemy_name}")
+        elif action_target and action_target.lower() not in ['ele', 'ela', 'enemy', 'inimigo']:
+            # Caso 3: Target específico (não é pronome genérico)
+            enemy_name = action_target
+        else:
+            # Caso 4: Fallback - tentar extrair do texto do RAG
+            import re
+            # Procurar padrão: "Nome (HABILIDADE X, ENERGIA Y)"
+            combat_match = re.search(r'([A-Z][a-zà-ú\-]+(?:\s+[A-Z][a-zà-ú\-]+)*)\s*\(HABILIDADE\s+(\d+),\s*ENERGIA\s+(\d+)\)', section_content)
+            if combat_match:
+                enemy_name = combat_match.group(1)
+                logger.info(f"[general_narrative] 📌 Extraído do RAG: {enemy_name}")
+            else:
+                enemy_name = 'Inimigo Desconhecido'
+                logger.warning(f"[general_narrative] ⚠️ Não foi possível identificar inimigo, usando genérico")
+
         if not enemy_data:
-            # Tentar extrair do texto do RAG
-            # Padrão: Guarda (HABILIDADE 7, ENERGIA 5)
-            logger.warning(f"[general_narrative] ⚠️ Sem dados de combate no RAG, usando inimigo padrão")
+            logger.warning(f"[general_narrative] ⚠️ Sem dados de combate no RAG, usando stats padrão")
             enemy_data = {
-                'name': action_target or 'Guarda',
+                'name': enemy_name,
                 'skill': 7,
                 'stamina': 5
             }
+        else:
+            # Atualizar nome se extraímos um melhor
+            enemy_data['name'] = enemy_name
 
         # Iniciar combate
         combat_info = start_combat(
-            enemy_name=enemy_data.get('name', action_target or 'Inimigo'),
+            enemy_name=enemy_data['name'],
             enemy_skill=enemy_data.get('skill', 7),
             enemy_stamina=enemy_data.get('stamina', 5)
         )
@@ -465,6 +507,11 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
     if action_result and not action_result['success']:
         narrative_text = f"{action_result['message']}\n\n{narrative_text}"
 
+    # Se é o início do jogo, adicionar introdução da aventura antes da narrativa
+    if adventure_intro:
+        narrative_text = f"{adventure_intro}{narrative_text}"
+        logger.info("[general_narrative] ✅ Introdução da aventura adicionada à narrativa")
+
     logger.info(
         f"[generate_narrative_node] Narrativa gerada: {len(narrative_text)} chars "
         f"(ação: {action_type}, sucesso: {action_result.get('success') if action_result else 'N/A'})"
@@ -520,6 +567,23 @@ def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
     in_combat = combat_result["winner"] is None
     game_over = combat_result["winner"] == "enemy"
     victory = combat_result["winner"] == "character"
+
+    # 🎯 Gerar opções estruturadas para combate
+    structured_options = []
+    if in_combat:
+        # Combate continua - oferecer opções de ataque
+        structured_options = [
+            {"type": "combat", "text": "⚔️ Continuar atacando"},
+            {"type": "exploration", "text": "🏃 Tentar fugir (arriscado)"},
+        ]
+    elif victory:
+        # Vitória - oferecer opções de exploração
+        structured_options = [
+            {"type": "exploration", "text": "🔍 Procurar itens no corpo do inimigo"},
+            {"type": "exploration", "text": "➡️ Continuar explorando"},
+        ]
+    # Se game_over, não precisa de opções (jogo terminou)
+
     logger.info(
         f"[generate_combat_narrative] Round {new_combat_data['rounds']} completo. "
         f"Winner: {combat_result['winner']}"
@@ -530,6 +594,7 @@ def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
         "combat_data": new_combat_data if in_combat else None,
         "in_combat": in_combat,
         "narrative_response": narrative_text,
+        "structured_options": structured_options,
         "game_over": game_over,
         "victory": victory,
         "next_step": "update_state",
@@ -640,6 +705,17 @@ def update_game_state_node(state: GameState) -> Dict[str, Any]:
         session.current_section = state["current_section"]
         session.inventory = state.get("inventory", [])
         session.flags = state.get("flags", {})
+
+        # 🎯 PERSISTIR ESTADO DE COMBATE (CRÍTICO!)
+        if state.get("in_combat"):
+            session.flags["in_combat"] = True
+            session.flags["combat_data"] = state.get("combat_data")
+            logger.info(f"[update_game_state_node] 💾 Combate persistido: {session.flags['combat_data']}")
+        else:
+            # Limpar flags de combate se não estiver em combate
+            session.flags.pop("in_combat", None)
+            session.flags.pop("combat_data", None)
+
         if state.get("game_over"):
             session.status = GameSession.STATUS_DEAD
         elif state.get("victory"):
@@ -713,10 +789,19 @@ def initialize_state_node(
         from apps.adventures.models import Adventure
 
         adventure = Adventure.objects.get(id=session.adventure_id)
+        # 🎯 RESTAURAR ESTADO DE COMBATE (se existir)
+        in_combat = session.flags.get("in_combat", False)
+        combat_data = session.flags.get("combat_data")
+
+        if in_combat and combat_data:
+            logger.info(f"[initialize_state_node] ⚔️ Combate restaurado: {combat_data['enemy_name']} (ENERGIA: {combat_data.get('enemy_stamina')})")
+
         state: GameState = {
             "session_id": session_id,
             "user_id": user_id,
             "adventure_id": session.adventure_id,
+            "adventure_title": adventure.title,
+            "adventure_description": adventure.description,
             "character_id": session.character_id,
             "character_name": character_state["name"],
             "skill": character_state["skill"],
@@ -740,8 +825,8 @@ def initialize_state_node(
             "section_metadata": {},
             "player_action": player_action,
             "action_type": "",
-            "in_combat": False,
-            "combat_data": None,
+            "in_combat": in_combat,
+            "combat_data": combat_data,
             "flags": session.flags,
             "narrative_response": "",
             "available_actions": [],

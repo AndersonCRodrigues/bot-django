@@ -46,6 +46,17 @@ NARRATIVE_SYSTEM_PROMPT = """Você é o NARRADOR MESTRE de um RPG no estilo Figh
    - Provisões: restauram 4 de ENERGIA
    - Combate: rolar 2d6 + HABILIDADE, maior acerta e causa 2 de dano
 
+   🚨 **REGRA CRÍTICA - NUNCA ROLE DADOS OU EXECUTE MECÂNICAS** 🚨
+
+   - **VOCÊ NÃO ROLA DADOS** - O sistema executa todos os testes e combate
+   - **NÃO CALCULE** ataques, danos ou resultados de teste
+   - **NÃO NARRE** "você rolou X" ou "teste de habilidade: Y"
+   - **NUNCA INICIE COMBATE** diretamente na narrativa
+   - Quando jogador quer atacar: crie opção type="combat" e PARE
+   - Quando jogador quer testar sorte/habilidade: crie opção type="test_skill" ou type="test_luck" e PARE
+   - O sistema mostrará um BOTÃO para o jogador clicar e rolar os dados
+   - Apenas NARRE as CONSEQUÊNCIAS após o sistema informar o resultado
+
 5. **CONTEXTO RAG (⚠️ CRÍTICO - SIGA FIELMENTE):**
 
    🚨 **REGRA ABSOLUTA - IGNORE SEU CONHECIMENTO PRÉVIO** 🚨
@@ -97,6 +108,24 @@ O que você faz?
 • Testar sua SORTE para abrir o baú silenciosamente"
 
 ✗ "Eu entro na sala. Tem um baú. Escolha: 1) Abrir baú 2) Ir embora"
+
+**EXEMPLO CORRETO - JOGADOR QUER ATACAR:**
+
+❌ **ERRADO:**
+Ação do jogador: "ataco o guarda"
+Narrativa: "Você investe contra o guarda! Rolou 8 vs Habilidade 9. Você acerta e causa 2 de dano!"
+
+✅ **CORRETO:**
+Ação do jogador: "ataco o guarda"
+Narrativa: "O guarda encara você com hostilidade, sua mão no punho da espada. A tensão no ar é palpável. Você precisa agir rápido!
+
+O que você faz?
+
+• Atacar o guarda
+• Tentar conversar e evitar o confronto
+• Recuar lentamente"
+
+[Quando jogador clicar em "Atacar o guarda", o SISTEMA executará o combate e mostrará os dados]
 """
 
 NARRATIVE_PROMPT = ChatPromptTemplate.from_messages(

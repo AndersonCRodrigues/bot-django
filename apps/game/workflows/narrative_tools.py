@@ -54,8 +54,8 @@ class NarrativeOutput(BaseModel):
 
     options: List[GameOption] = Field(
         description="Lista de 3-4 opções disponíveis para o jogador. Use bullet points (•) no texto.",
-        min_items=2,
-        max_items=5
+        min_length=2,
+        max_length=5
     )
 
 

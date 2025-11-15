@@ -206,6 +206,65 @@ def extract_npcs_from_content(section_content: str) -> List[str]:
     return list(set(npcs))  # Remove duplicatas
 
 
+def extract_items_from_content(section_content: str) -> List[str]:
+    """
+    Extrai itens disponíveis na seção (whitelist).
+
+    Busca por padrões comuns em Fighting Fantasy:
+    - "você encontra uma espada"
+    - "há uma tocha na parede"
+    - "pegar o escudo"
+    - "uma poção está sobre a mesa"
+
+    Args:
+        section_content: Texto da seção
+
+    Returns:
+        Lista de itens disponíveis (whitelist da seção)
+    """
+    items = []
+    content_lower = section_content.lower()
+
+    # Padrões de itens mencionados
+    item_patterns = [
+        r'voc[êe] encontra (?:um |uma |o |a )?(\w+)',
+        r'h[áa] (?:um |uma |o |a )?(\w+) (?:na |no |sobre |em)',
+        r'pegar (?:o |a |um |uma )?(\w+)',
+        r'(?:um |uma |o |a )(\w+) est[áa] (?:sobre|em|na|no)',
+        r'(?:espada|escudo|po[çc][ãa]o|tocha|chave|corda|mapa|pergaminho|cajado|adaga|arco|flecha|elmo|armadura|botas|luvas|anel|amuleto|lan[çc]a|machado|martelo|ma[çc]a|varinha|livro|pergaminho|saco|mochila|cantil|provis[õo]es)',
+    ]
+
+    for pattern in item_patterns:
+        matches = re.findall(pattern, content_lower)
+        for match in matches:
+            item = match.strip()
+            # Normalizar e capitalizar
+            if len(item) > 2 and item not in ['que', 'isso', 'ele', 'ela', 'este', 'esta']:
+                items.append(item.title())
+
+    # Itens comuns de Fighting Fantasy (detectar menção direta)
+    common_items = [
+        'Espada', 'Escudo', 'Poção', 'Tocha', 'Chave', 'Corda',
+        'Mapa', 'Pergaminho', 'Cajado', 'Adaga', 'Arco', 'Flecha',
+        'Elmo', 'Armadura', 'Botas', 'Luvas', 'Anel', 'Amuleto',
+        'Lança', 'Machado', 'Martelo', 'Maça', 'Varinha', 'Livro',
+        'Saco', 'Mochila', 'Cantil', 'Provisões', 'Ouro', 'Prata',
+        'Gema', 'Diamante', 'Rubi', 'Esmeralda', 'Safira'
+    ]
+
+    for item in common_items:
+        if item.lower() in content_lower:
+            items.append(item)
+
+    # Remover duplicatas e retornar ordenado
+    unique_items = sorted(list(set(items)))
+
+    if unique_items:
+        logger.debug(f"[extract_items] Itens encontrados: {unique_items}")
+
+    return unique_items
+
+
 def extract_combat_info(section_content: str) -> Dict[str, Any]:
     """
     Extrai informações de combate do texto.
@@ -354,6 +413,7 @@ def extract_all_section_info(
         'exits': extract_exits_from_content(section_content),
         'flags': extract_flags_from_content(section_content, section_number),
         'npcs': extract_npcs_from_content(section_content),
+        'items': extract_items_from_content(section_content),
         'combat': extract_combat_info(section_content),
     }
 
@@ -362,6 +422,7 @@ def extract_all_section_info(
         f"{len(info['exits'])} exits, "
         f"{len(info['flags'])} flags, "
         f"{len(info['npcs'])} NPCs, "
+        f"{len(info['items'])} items, "
         f"combate={'sim' if info['combat'] else 'não'}"
     )
 

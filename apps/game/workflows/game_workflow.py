@@ -133,6 +133,7 @@ def process_game_action(
         result = {
             "success": not bool(final_state.get("error")),
             "narrative": final_state.get("narrative_response", ""),
+            "structured_options": final_state.get("structured_options", []),  # 🎯 Opções estruturadas da LLM
             "game_over": final_state.get("game_over", False),
             "victory": final_state.get("victory", False),
             "error": final_state.get("error"),

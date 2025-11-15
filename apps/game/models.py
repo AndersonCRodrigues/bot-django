@@ -126,6 +126,34 @@ class GameSession:
         )
         return cls.from_dict(doc) if doc else None
 
+    @classmethod
+    def create_session(
+        cls, user_id: int, character_id: str, adventure_id: int
+    ) -> "GameSession":
+        """
+        Cria uma nova sessão de jogo.
+
+        A sessão sempre começa na seção 1 (introdução do livro).
+        """
+        session = cls(
+            user_id=user_id,
+            character_id=character_id,
+            adventure_id=adventure_id,
+            current_section=1,  # 🎯 SEMPRE começa na seção 1
+            visited_sections=[1],
+            inventory=[],
+            flags={},
+            history=[],
+            status=cls.STATUS_ACTIVE,
+        )
+        session.save()
+        return session
+
+    @property
+    def session_id(self) -> str:
+        """Alias para id, usado pela view."""
+        return self.id
+
     def save(self):
         collection = self.get_collection()
         self.updated_at = datetime.utcnow()

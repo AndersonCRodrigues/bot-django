@@ -224,7 +224,8 @@ def play_game(request, session_id):
 
         # Se é primeira vez, gerar narrativa inicial
         if not session.history:
-            initial_action = "Começar a aventura com uma breve narração da introdução!"
+            # Ação interna - não deve aparecer no histórico como mensagem do jogador
+            initial_action = "[SYSTEM] Iniciar aventura"
             result = process_game_action(
                 session_id=session_id,
                 user_id=request.user.id,

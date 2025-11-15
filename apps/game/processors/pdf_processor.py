@@ -1,6 +1,7 @@
 import os
+import re
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -14,6 +15,37 @@ from apps.game.models import ProcessedBook
 from apps.game.services import create_vector_store
 
 logger = logging.getLogger("game.processor")
+
+
+def extract_section_number(text: str) -> Optional[int]:
+    """
+    Extrai número da seção de um chunk de texto.
+
+    Padrões suportados:
+    - "189" (número sozinho no início)
+    - "Seção 189"
+    - "189-192" (ranges de seções)
+    """
+    # Limpar texto
+    text = text.strip()
+    first_lines = "\n".join(text.split("\n")[:3])  # Primeiras 3 linhas
+
+    # Padrão 1: Número sozinho ou range (ex: "189" ou "189-192")
+    match = re.match(r'^(\d+)(?:-\d+)?\s*$', first_lines, re.MULTILINE)
+    if match:
+        return int(match.group(1))
+
+    # Padrão 2: "Seção N" ou "Secao N"
+    match = re.search(r'(?:Seção|Secao|Parágrafo|Paragrafo)\s+(\d+)', first_lines, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+
+    # Padrão 3: Número no início seguido de quebra de linha
+    match = re.match(r'^(\d+)\s*\n', text)
+    if match:
+        return int(match.group(1))
+
+    return None
 
 
 @dataclass
@@ -117,21 +149,36 @@ class PDFProcessor:
         try:
             logger.info(f"Processando lote {batch_num}/{total_batches}")
 
-            batch_with_metadata = [
-                Document(
-                    page_content=chunk.page_content,
-                    metadata={
-                        "source": self.class_name,
-                        "adventure_id": self.adventure_id,
-                        "batch": batch_num,
-                        "page": chunk.metadata.get("page", 0),
-                        "total_pages": len(
-                            set(doc.metadata.get("page", 0) for doc in self.chunks)
-                        ),
-                    },
+            batch_with_metadata = []
+            for chunk in batch:
+                # 🎯 Extrair número da seção do conteúdo
+                section_num = extract_section_number(chunk.page_content)
+
+                metadata = {
+                    "source": self.class_name,
+                    "adventure_id": self.adventure_id,
+                    "batch": batch_num,
+                    "page": chunk.metadata.get("page", 0),
+                    "total_pages": len(
+                        set(doc.metadata.get("page", 0) for doc in self.chunks)
+                    ),
+                }
+
+                # Adicionar metadados de seção se encontrado
+                if section_num is not None:
+                    metadata["section"] = section_num
+                    metadata["is_numbered_paragraph"] = True
+                    metadata["paragraph_number"] = section_num
+                    logger.debug(f"Chunk identificado como seção {section_num}")
+                else:
+                    metadata["is_numbered_paragraph"] = False
+
+                batch_with_metadata.append(
+                    Document(
+                        page_content=chunk.page_content,
+                        metadata=metadata,
+                    )
                 )
-                for chunk in batch
-            ]
 
             self.weaviate_store.add_documents(batch_with_metadata)
             logger.info(f"Lote {batch_num}/{total_batches} indexado com sucesso")

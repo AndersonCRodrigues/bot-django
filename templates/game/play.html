@@ -139,11 +139,13 @@
 
                 {% for entry in history %}
                     {% if entry.player_action %}
-                        <div class="flex justify-end">
-                            <div class="max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-4 py-3">
-                                <p class="text-white text-sm">{{ entry.player_action }}</p>
+                        {% if entry.player_action|slice:":8" != "[SYSTEM]" %}
+                            <div class="flex justify-end">
+                                <div class="max-w-2xl bg-[#6366F1] rounded-2xl rounded-tr-sm px-4 py-3">
+                                    <p class="text-white text-sm">{{ entry.player_action }}</p>
+                                </div>
                             </div>
-                        </div>
+                        {% endif %}
                     {% endif %}
                     {% if entry.narrative %}
                         <div class="flex justify-start">
@@ -543,6 +545,13 @@ function showContextualActions(actions) {
     buttonsContainer.innerHTML = '';
 
     actions.forEach(action => {
+        // Mapear tipo da LLM para ícone/label se não tiver
+        if (!action.icon || !action.label) {
+            const mapping = getActionMapping(action.type);
+            action.icon = action.icon || mapping.icon;
+            action.label = action.label || action.text || mapping.label;
+        }
+
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] hover:from-[#5558E3] hover:to-[#7C3AED] text-white font-semibold px-6 py-3 rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center gap-2';
@@ -553,6 +562,22 @@ function showContextualActions(actions) {
 
     container.classList.remove('hidden');
     disableTextInput(true);
+}
+
+// Mapeia tipos de ação da LLM para ícones e labels
+function getActionMapping(type) {
+    const mappings = {
+        'test_skill': { icon: '🎲', label: 'Testar Habilidade' },
+        'test_luck': { icon: '🍀', label: 'Testar Sorte' },
+        'combat': { icon: '⚔️', label: 'Atacar' },
+        'navigation': { icon: '🚶', label: 'Ir' },
+        'pickup': { icon: '👜', label: 'Pegar' },
+        'use_item': { icon: '✨', label: 'Usar' },
+        'talk': { icon: '💬', label: 'Conversar' },
+        'examine': { icon: '🔍', label: 'Examinar' },
+        'exploration': { icon: '🗺️', label: 'Explorar' }
+    };
+    return mappings[type] || { icon: '❓', label: 'Ação' };
 }
 
 function hideContextualActions() {
@@ -572,13 +597,25 @@ async function handleContextualAction(action) {
 
     hideContextualActions();
 
-    // Mostrar animação de dados se for teste/ataque
-    if (action.type === 'test_luck' || action.type === 'attack') {
+    // Mostrar animação de dados se for teste/ataque/combate
+    if (action.type === 'test_luck' || action.type === 'test_skill' || action.type === 'attack' || action.type === 'combat') {
         await showDiceAnimation();
     }
 
+    // Construir texto da ação
+    let actionText = action.text || action.label || action.type;
+
+    // 🎯 Se for navegação com número de seção, incluir no texto
+    if (action.type === 'navigation' && action.section) {
+        actionText = `[IR PARA ${action.section}] ${actionText}`;
+        console.log('Navigation with section:', action.section);
+    }
+
+    // Adicionar mensagem do jogador ao chat
+    addMessage('user', actionText);
+
     // Enviar ação ao servidor
-    await sendAction(action.type);
+    await sendAction(actionText);
 }
 
 // ===== ANIMAÇÃO DE DADOS =====
@@ -681,9 +718,11 @@ window.sendAction = async function(action) {
                 });
             }
 
-            // Mostrar ações disponíveis
-            if (data.available_actions && data.available_actions.length > 0) {
-                showContextualActions(data.available_actions);
+            // Mostrar ações disponíveis (prioriza structured_options da LLM)
+            const actionsToShow = data.structured_options || data.available_actions || [];
+
+            if (actionsToShow && actionsToShow.length > 0) {
+                showContextualActions(actionsToShow);
             } else {
                 hideContextualActions();
             }

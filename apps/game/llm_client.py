@@ -1,35 +1,28 @@
 """
-🎯 Cliente LLM Global - Instância única compartilhada
+🎯 Cliente LLM Global - OpenAI
 
-Padrão module-level singleton (como código de referência).
-
-Instâncias criadas UMA VEZ quando módulo é importado.
-Todos os imports compartilham as MESMAS instâncias.
-
-Uso:
-    from apps.game.llm_client import llm_client, embedding_client
-    response = llm_client.invoke(...)
+Migrado de Gemini para OpenAI para evitar rate limiting (15 RPM -> 500 RPM).
+Usando gpt-4o-mini (mais barato) + text-embedding-3-small.
 """
 
 import logging
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from django.conf import settings
 
 logger = logging.getLogger("game.llm_client")
 
-# 🎯 Instâncias globais criadas no import do módulo
-# Python garante execução única - mais simples que singleton pattern
-
-logger.info("[LLM Client] Criando instância global de ChatGoogleGenerativeAI")
-llm_client = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash-lite",
-    google_api_key=settings.GEMINI_API_KEY,
-    temperature=0.7,
-    max_output_tokens=2048,
+# 🎯 Instância global OpenAI
+logger.info("[LLM Client] Criando instância global de ChatOpenAI (gpt-4o-mini)")
+llm_client = ChatOpenAI(
+    model="gpt-4o-mini",
+    api_key=settings.OPENAI_API_KEY,
+    temperature=0.2,  # 🎯 Reduzido de 0.7 para forçar seguir instruções RAG
+    max_tokens=2048,
+    max_retries=2,
 )
 
-logger.info("[LLM Client] Criando instância global de GoogleGenerativeAIEmbeddings")
-embedding_client = GoogleGenerativeAIEmbeddings(
-    model="models/text-embedding-004",
-    google_api_key=settings.GEMINI_API_KEY,
+logger.info("[LLM Client] Criando instância global de OpenAIEmbeddings")
+embedding_client = OpenAIEmbeddings(
+    model="text-embedding-3-small",
+    api_key=settings.OPENAI_API_KEY,
 )

@@ -11,7 +11,11 @@ from .prompts import (
     TEST_PROMPT,
     ACTION_VALIDATOR_PROMPT,
 )
-from apps.game.services.retriever_service import search_section, get_section_by_number
+from apps.game.services.retriever_service import (
+    search_section,
+    get_section_by_number,
+    get_section_by_number_direct,
+)
 from apps.game.tools.combat import combat_round, start_combat
 from apps.game.tools.dice import roll_dice, check_luck, check_skill
 from apps.game.tools.inventory import add_item, remove_item, check_item, use_item
@@ -20,6 +24,21 @@ from apps.game.models import GameSession
 from apps.characters.models import Character
 from apps.game.workflows.narrative_agent import RigidStructureValidator
 from apps.game.llm_client import llm_client  # 🎯 Cliente LLM global
+from apps.game.json_parser import extract_narrative_and_options, filter_valid_options
+from apps.game.workflows.narrative_tools import NARRATIVE_TOOLS, provide_game_narrative
+from apps.game.narrative_templates import (
+    format_combat_narrative,
+    format_luck_test_narrative,
+    format_skill_test_narrative,
+)
+from apps.game.action_parser import parse_player_action
+from apps.game.action_validators import (
+    validate_pickup_item,
+    validate_use_item,
+    validate_navigation,
+    validate_talk_to_npc,
+)
+from apps.game.rag_extractors import extract_all_section_info
 
 logger = logging.getLogger("game.workflow")
 
@@ -144,12 +163,10 @@ def retrieve_context_node(state: GameState) -> Dict[str, Any]:
     current_section = state["current_section"]
     action_type = state.get("action_type", "exploration")
     try:
-        if action_type == "navigation":
-            section_data = get_section_by_number(book_class_name, current_section)
-        else:
-            query = f"seção {current_section} {state['player_action']}"
-            results = search_section(book_class_name, query, k=1)
-            section_data = results[0] if results else None
+        # 🚀 OTIMIZAÇÃO: Busca direta por metadata (SEM EMBEDDING!)
+        # Economiza 1 API call por turno, reduzindo rate limiting
+        section_data = get_section_by_number_direct(book_class_name, current_section)
+
         if not section_data:
             logger.warning(
                 f"[retrieve_context_node] Seção {current_section} não encontrada"
@@ -204,10 +221,250 @@ def generate_narrative_node(state: GameState) -> Dict[str, Any]:
 
 
 def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
+    """
+    Gera narrativa geral usando arquitetura RAG-first:
+    1. Parse da ação do jogador (detectar intenção)
+    2. Extrair info do RAG (items, NPCs, exits)
+    3. Validar ação
+    4. Executar ação (se aplicável)
+    5. LLM narra o resultado
+    """
+    player_action = state["player_action"]
+    section_content = state.get("section_content", "")
+    current_section = state.get("current_section", 1)
+    inventory = state.get("inventory", [])
+
+    # 🎯 DETECTAR SE ESTÁ EM COMBATE (redirecionar para fluxo de combate)
+    if state.get("in_combat"):
+        # Jogador está em combate - processar próximo round
+        logger.info("[general_narrative] ⚔️ Jogador em combate - continuando round")
+        return _generate_combat_narrative(state)
+
+    # 🎯 DETECTAR SE É O INÍCIO DO JOGO (primeira narrativa)
+    is_initial_action = "[SYSTEM]" in player_action and "Iniciar" in player_action
+    adventure_intro = ""
+
+    if is_initial_action:
+        adventure_title = state.get("adventure_title", "")
+        adventure_description = state.get("adventure_description", "")
+        logger.info("[general_narrative] 🎬 Detectado início do jogo - incluindo introdução da aventura")
+        adventure_intro = f"\n\n**📖 {adventure_title}**\n\n{adventure_description}\n\n---\n\n"
+
+    # 🎯 STEP 1: Parse da ação do jogador
+    parsed_action = parse_player_action(player_action)
+    action_type = parsed_action['type']
+    action_target = parsed_action.get('target')
+    target_section = parsed_action.get('section')  # Para navegação
+
+    logger.info(f"[general_narrative] Ação parseada: {action_type} (target: {action_target}, section: {target_section})")
+
+    # 🎯 STEP 2: Extrair informações do RAG ATUAL (antes de mudar seção)
+    section_info = extract_all_section_info(section_content, current_section)
+    available_items = section_info.get('items', [])
+    available_exits = section_info.get('exits', [])
+    available_npcs = section_info.get('npcs', [])
+
+    logger.debug(
+        f"[general_narrative] RAG info: {len(available_items)} items, "
+        f"{len(available_exits)} exits, {len(available_npcs)} NPCs"
+    )
+
+    # 🎯 STEP 2.5: Se for navegação com seção, atualizar current_section AGORA
+    if action_type == 'navigation' and target_section:
+        logger.info(f"[general_narrative] 🗺️ Navegação detectada: {current_section} → {target_section}")
+
+        # Validar navegação
+        validation = validate_navigation(target_section, available_exits, inventory)
+
+        if not validation.valid:
+            logger.warning(f"[general_narrative] ✗ Navegação bloqueada: {validation.message}")
+            return {
+                **state,
+                "narrative_response": f"❌ {validation.message}",
+                "structured_options": [],
+                "next_step": "update_state",
+            }
+
+        # ✅ Navegação válida - atualizar seção e BUSCAR RAG NOVO
+        from apps.game.services.retriever_service import get_section_by_number_direct
+
+        new_section_data = get_section_by_number_direct(state['book_class_name'], target_section)
+
+        if not new_section_data:
+            logger.error(f"[general_narrative] ✗ Seção {target_section} não encontrada no RAG")
+            return {
+                **state,
+                "narrative_response": f"❌ Erro: Seção {target_section} não existe.",
+                "structured_options": [],
+                "next_step": "update_state",
+            }
+
+        # Atualizar state com nova seção
+        current_section = target_section
+        section_content = new_section_data.get('content', '')
+        state['current_section'] = target_section
+        state['section_content'] = section_content
+
+        # Re-extrair section_info da NOVA seção
+        section_info = extract_all_section_info(section_content, current_section)
+        available_items = section_info.get('items', [])
+        available_exits = section_info.get('exits', [])
+        available_npcs = section_info.get('npcs', [])
+
+        logger.info(f"[general_narrative] ✓ Movido para seção {target_section} - RAG atualizado")
+
+    # 🎯 STEP 3 & 4: Validar e executar ação (baseado no tipo)
+    action_result = None
+    updates = {}
+
+    # ⚔️ COMBATE: Iniciar se não estiver em combate
+    if action_type == 'combat' and not state.get('in_combat'):
+        logger.info(f"[general_narrative] ⚔️ Iniciando combate com '{action_target}'")
+
+        # 🎯 Prioridade 1: Usar enemies capturados da opção estruturada (LLM extraiu do RAG)
+        pending_enemies = state.get('pending_combat_enemies', [])
+        enemies_list = []
+
+        if pending_enemies:
+            logger.info(f"[general_narrative] 📋 Usando {len(pending_enemies)} inimigos da opção estruturada")
+            for enemy in pending_enemies:
+                enemies_list.append({
+                    'name': enemy['name'],
+                    'skill': enemy['skill'],
+                    'stamina': enemy['stamina'],
+                    'max_stamina': enemy['stamina']
+                })
+        else:
+            # 🎯 Prioridade 2: Extrair do RAG ou usar fallback
+            enemy_data = section_info.get('combat')
+            enemy_name = None
+
+            if enemy_data and enemy_data.get('name'):
+                enemy_name = enemy_data['name']
+            elif available_npcs:
+                enemy_name = available_npcs[0]
+                logger.info(f"[general_narrative] 📌 Usando NPC da seção: {enemy_name}")
+            elif action_target and action_target.lower() not in ['ele', 'ela', 'enemy', 'inimigo']:
+                enemy_name = action_target
+            else:
+                import re
+                combat_match = re.search(r'([A-Z][a-zà-ú\-]+(?:\s+[A-Z][a-zà-ú\-]+)*)\s*\(HABILIDADE\s+(\d+),\s*ENERGIA\s+(\d+)\)', section_content)
+                if combat_match:
+                    enemy_name = combat_match.group(1)
+                    logger.info(f"[general_narrative] 📌 Extraído do RAG via regex: {enemy_name}")
+                else:
+                    enemy_name = 'Inimigo Desconhecido'
+                    logger.warning(f"[general_narrative] ⚠️ Não identificou inimigo, usando genérico")
+
+            if not enemy_data:
+                logger.warning(f"[general_narrative] ⚠️ Sem dados de combate, usando stats padrão")
+                enemy_data = {'name': enemy_name, 'skill': 7, 'stamina': 5}
+            else:
+                enemy_data['name'] = enemy_name
+
+            enemies_list.append({
+                'name': enemy_data['name'],
+                'skill': enemy_data.get('skill', 7),
+                'stamina': enemy_data.get('stamina', 5),
+                'max_stamina': enemy_data.get('stamina', 5)
+            })
+
+        # Atualizar state com dados de combate (estrutura para múltiplos inimigos)
+        updates['in_combat'] = True
+        updates['combat_data'] = {
+            'enemies': enemies_list,
+            'current_enemy_index': 0,
+            'rounds': 0,
+            'total_rounds': 0  # Contador global de rounds (todos os inimigos)
+        }
+
+        # Limpar pending_combat_enemies
+        updates['pending_combat_enemies'] = None
+
+        logger.info(f"[general_narrative] ✓ Combate iniciado com {len(enemies_list)} inimigo(s):")
+        for i, enemy in enumerate(enemies_list):
+            logger.info(f"  [{i}] {enemy['name']} (HAB {enemy['skill']}, ENERGIA {enemy['stamina']})")
+
+        # Atualizar state agora
+        state['in_combat'] = True
+        state['combat_data'] = updates['combat_data']
+        state['pending_combat_enemies'] = None
+
+        # Chamar fluxo de combate para executar primeiro round
+        return _generate_combat_narrative(state)
+
+    if action_type == 'pickup':
+        # Validar pickup
+        validation = validate_pickup_item(action_target, available_items, inventory)
+        if validation.valid:
+            # Executar: adicionar item ao inventário
+            add_item(state, action_target)
+            updates['inventory'] = state.get('inventory', []) + [action_target]
+            action_result = {
+                'success': True,
+                'message': f"Você pega {action_target}."
+            }
+            logger.info(f"[general_narrative] ✓ Item '{action_target}' adicionado")
+        else:
+            action_result = {
+                'success': False,
+                'message': validation.message
+            }
+            logger.warning(f"[general_narrative] ✗ Pickup falhou: {validation.reason}")
+
+    elif action_type == 'use_item':
+        # Validar uso de item
+        validation = validate_use_item(action_target, inventory)
+        if validation.valid:
+            # Executar: usar item (lógica específica por tipo de item)
+            use_result = use_item(state, action_target)
+            action_result = {
+                'success': True,
+                'message': f"Você usa {action_target}.",
+                'effect': use_result
+            }
+            logger.info(f"[general_narrative] ✓ Item '{action_target}' usado")
+        else:
+            action_result = {
+                'success': False,
+                'message': validation.message
+            }
+            logger.warning(f"[general_narrative] ✗ Use item falhou: {validation.reason}")
+
+    elif action_type == 'talk':
+        # Validar conversa com NPC
+        validation = validate_talk_to_npc(action_target, available_npcs)
+        if not validation.valid:
+            action_result = {
+                'success': False,
+                'message': validation.message
+            }
+            logger.warning(f"[general_narrative] ✗ Talk falhou: {validation.reason}")
+        else:
+            # NPC válido - LLM vai gerar diálogo
+            action_result = {
+                'success': True,
+                'message': f"Você conversa com {action_target}."
+            }
+
+    # 🎯 STEP 5: LLM narra o resultado usando TOOL FORCING
     llm = get_llm(temperature=0.8)
-    chain = NARRATIVE_PROMPT | llm
+
+    # Vincular tools e FORÇAR uso da tool provide_game_narrative
+    llm_with_tools = llm.bind_tools(
+        NARRATIVE_TOOLS,
+        tool_choice="provide_game_narrative"  # 🎯 FORÇA usar a tool
+    )
+
+    chain = NARRATIVE_PROMPT | llm_with_tools
     recent_history = _format_recent_history(state.get("history", []))
-    inventory_str = ", ".join(state.get("inventory", [])) or "Vazio"
+    inventory_str = ", ".join(updates.get('inventory', inventory)) or "Vazio"
+
+    # Preparar contexto enriquecido com resultado da validação
+    narrative_context = state.get("section_content", "")
+    if action_result:
+        narrative_context += f"\n\n[Resultado da ação: {action_result['message']}]"
+
     response = chain.invoke(
         {
             "character_name": state["character_name"],
@@ -218,20 +475,71 @@ def _generate_general_narrative(state: GameState) -> Dict[str, Any]:
             "gold": state["gold"],
             "provisions": state["provisions"],
             "inventory": inventory_str,
-            "current_section": state["current_section"],
-            "section_content": state.get("section_content", ""),
-            "player_action": state["player_action"],
+            "current_section": current_section,
+            "section_content": narrative_context,
+            "player_action": player_action,
             "recent_history": recent_history,
             "flags": json.dumps(state.get("flags", {}), indent=2),
         }
     )
-    narrative_text = response.content
+
+    # 🎯 STEP 6: Extrair dados estruturados da tool call
+    narrative_text = ""
+    structured_options = []
+
+    if response.tool_calls:
+        # LLM chamou a tool - extrair argumentos
+        tool_call = response.tool_calls[0]
+        tool_args = tool_call.get("args", {})
+
+        narrative_text = tool_args.get("narrative", "")
+        structured_options = tool_args.get("options", [])
+
+        logger.info(f"✅ Tool call recebida: {len(structured_options)} opções estruturadas")
+    else:
+        # Fallback: tentar extrair JSON do texto (se LLM não chamou tool)
+        logger.warning("⚠️ LLM não chamou tool! Tentando fallback para JSON parsing...")
+        raw_response = response.content
+        narrative_text, structured_options = extract_narrative_and_options(raw_response)
+
+    # Validar e filtrar opções
+    valid_options = filter_valid_options(structured_options)
+
+    if valid_options:
+        logger.info(f"✅ {len(valid_options)} opções válidas após filtro")
+    else:
+        logger.warning("⚠️ Nenhuma opção estruturada válida!")
+
+    # 🎯 CAPTURAR ENEMIES de opções de combate para usar posteriormente
+    pending_enemies = None
+    for opt in valid_options:
+        if opt.get('type') == 'combat' and opt.get('enemies'):
+            pending_enemies = opt['enemies']
+            logger.info(f"[general_narrative] 📋 Capturados {len(pending_enemies)} inimigos da opção de combate")
+            break
+
+    if pending_enemies:
+        updates['pending_combat_enemies'] = pending_enemies
+
+    # Se ação falhou, priorizar mensagem de erro
+    if action_result and not action_result['success']:
+        narrative_text = f"{action_result['message']}\n\n{narrative_text}"
+
+    # Se é o início do jogo, adicionar introdução da aventura antes da narrativa
+    if adventure_intro:
+        narrative_text = f"{adventure_intro}{narrative_text}"
+        logger.info("[general_narrative] ✅ Introdução da aventura adicionada à narrativa")
+
     logger.info(
-        f"[generate_narrative_node] Narrativa gerada: {len(narrative_text)} chars"
+        f"[generate_narrative_node] Narrativa gerada: {len(narrative_text)} chars "
+        f"(ação: {action_type}, sucesso: {action_result.get('success') if action_result else 'N/A'})"
     )
+
     return {
         **state,
+        **updates,
         "narrative_response": narrative_text,
+        "structured_options": valid_options,  # 🎯 Opções estruturadas
         "next_step": "update_state",
     }
 
@@ -245,51 +553,117 @@ def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
             "narrative_response": "Erro: você não está em combate.",
             "next_step": "end",
         }
+
+    # 🎯 Suporte a múltiplos inimigos
+    enemies = combat_data.get("enemies", [])
+    current_index = combat_data.get("current_enemy_index", 0)
+
+    if not enemies or current_index >= len(enemies):
+        logger.error("[generate_combat_narrative] Inimigo atual inválido")
+        return {
+            **state,
+            "narrative_response": "Erro: dados de combate corrompidos.",
+            "next_step": "end",
+        }
+
+    current_enemy = enemies[current_index]
+    logger.info(f"[generate_combat_narrative] Round vs {current_enemy['name']} (índice {current_index}/{len(enemies)-1})")
+
+    # Executar round de combate
     combat_result = combat_round(
         character_skill=state["skill"],
         character_stamina=state["stamina"],
-        enemy_name=combat_data["enemy_name"],
-        enemy_skill=combat_data["enemy_skill"],
-        enemy_stamina=combat_data["enemy_stamina"],
+        enemy_name=current_enemy["name"],
+        enemy_skill=current_enemy["skill"],
+        enemy_stamina=current_enemy["stamina"],
     )
+
+    # Atualizar dados do inimigo atual
+    enemies[current_index]["stamina"] = combat_result["enemy_stamina"]
+
+    # Incrementar contadores
+    total_rounds = combat_data.get("total_rounds", 0) + 1
+
+    # 🎯 OTIMIZAÇÃO: Usar template Python em vez de LLM
+    narrative_text = format_combat_narrative(
+        enemy_name=current_enemy["name"],
+        enemy_skill=current_enemy["skill"],
+        enemy_stamina=current_enemy["stamina"],
+        character_skill=state["skill"],
+        character_stamina=state["stamina"],
+        character_roll=combat_result["character_roll"],
+        character_attack=combat_result["character_attack"],
+        enemy_roll=combat_result["enemy_roll"],
+        enemy_attack=combat_result["enemy_attack"],
+        combat_result=combat_result["message"],
+        new_character_stamina=combat_result["character_stamina"],
+        new_enemy_stamina=combat_result["enemy_stamina"],
+    )
+
+    # 🎯 Determinar estado do combate
+    in_combat = True
+    game_over = False
+    victory = False
+
+    if combat_result["winner"] == "character":
+        # Inimigo atual derrotado
+        logger.info(f"[generate_combat_narrative] ✅ {current_enemy['name']} derrotado!")
+
+        # Verificar se há mais inimigos
+        if current_index + 1 < len(enemies):
+            # Há mais inimigos - avançar para o próximo
+            next_enemy = enemies[current_index + 1]
+            narrative_text += f"\n\n🎯 {current_enemy['name']} foi derrotado! Mas {next_enemy['name']} avança para atacar!"
+            current_index += 1
+            logger.info(f"[generate_combat_narrative] ⚔️ Próximo inimigo: {next_enemy['name']}")
+        else:
+            # Todos os inimigos derrotados - vitória completa
+            in_combat = False
+            victory = True
+            narrative_text += f"\n\n🎉 Você derrotou todos os inimigos!"
+
+    elif combat_result["winner"] == "enemy":
+        # Jogador morreu
+        in_combat = False
+        game_over = True
+        logger.info(f"[generate_combat_narrative] 💀 Jogador derrotado por {current_enemy['name']}")
+
+    # Atualizar combat_data
     new_combat_data = {
-        **combat_data,
-        "enemy_stamina": combat_result["enemy_stamina"],
+        "enemies": enemies,
+        "current_enemy_index": current_index,
         "rounds": combat_data.get("rounds", 0) + 1,
+        "total_rounds": total_rounds
     }
-    llm = get_llm(temperature=0.7)
-    chain = COMBAT_PROMPT | llm
-    response = chain.invoke(
-        {
-            "enemy_name": combat_data["enemy_name"],
-            "enemy_skill": combat_data["enemy_skill"],
-            "enemy_stamina": combat_data["enemy_stamina"],
-            "character_skill": state["skill"],
-            "character_stamina": state["stamina"],
-            "character_roll": combat_result["character_roll"],
-            "character_roll_details": combat_result["character_roll_details"],
-            "character_attack": combat_result["character_attack"],
-            "enemy_roll": combat_result["enemy_roll"],
-            "enemy_roll_details": combat_result["enemy_roll_details"],
-            "enemy_attack": combat_result["enemy_attack"],
-            "combat_result": combat_result["message"],
-            "new_character_stamina": combat_result["character_stamina"],
-            "new_enemy_stamina": combat_result["enemy_stamina"],
-        }
-    )
-    in_combat = combat_result["winner"] is None
-    game_over = combat_result["winner"] == "enemy"
-    victory = combat_result["winner"] == "character"
+
+    # 🎯 Gerar opções estruturadas
+    structured_options = []
+    if in_combat:
+        # Combate continua
+        structured_options = [
+            {"type": "combat", "text": "⚔️ Continuar atacando"},
+            {"type": "test_luck", "text": "🍀 Usar SORTE (se acertar: +2 dano)"},
+            {"type": "exploration", "text": "🏃 Tentar fugir (arriscado)"},
+        ]
+    elif victory:
+        # Vitória
+        structured_options = [
+            {"type": "exploration", "text": "🔍 Procurar itens nos corpos"},
+            {"type": "exploration", "text": "➡️ Continuar explorando"},
+        ]
+
     logger.info(
-        f"[generate_combat_narrative] Round {new_combat_data['rounds']} completo. "
-        f"Winner: {combat_result['winner']}"
+        f"[generate_combat_narrative] Round {total_rounds} completo. "
+        f"Inimigo {current_index+1}/{len(enemies)}, Status: {'combate' if in_combat else 'fim'}"
     )
+
     return {
         **state,
         "stamina": combat_result["character_stamina"],
         "combat_data": new_combat_data if in_combat else None,
         "in_combat": in_combat,
-        "narrative_response": response.content,
+        "narrative_response": narrative_text,
+        "structured_options": structured_options,
         "game_over": game_over,
         "victory": victory,
         "next_step": "update_state",
@@ -298,43 +672,47 @@ def _generate_combat_narrative(state: GameState) -> Dict[str, Any]:
 
 def _generate_test_narrative(state: GameState) -> Dict[str, Any]:
     action_type = state.get("action_type", "test_luck")
+
+    # 🎯 OTIMIZAÇÃO: Usar template Python em vez de LLM (evita 429 errors)
     if action_type == "test_luck":
         test_result = check_luck(character_luck=state["luck"])
         test_type = "SORTE"
-        stat_value = state["luck"]
         new_stat_value = test_result["new_luck"]
+
+        narrative_text = format_luck_test_narrative(
+            character_name=state["character_name"],
+            luck_value=state["luck"],
+            roll=test_result["roll"],
+            success=test_result["success"],
+            new_luck=new_stat_value,
+            player_action=state["player_action"],
+        )
     else:
         test_result = check_skill(character_skill=state["skill"])
         test_type = "HABILIDADE"
-        stat_value = state["skill"]
-        new_stat_value = stat_value
-    llm = get_llm(temperature=0.7)
-    chain = TEST_PROMPT | llm
-    response = chain.invoke(
-        {
-            "test_type": test_type,
-            "test_type_upper": test_type,
-            "character_name": state["character_name"],
-            "stat_value": stat_value,
-            "roll": test_result["roll"],
-            "roll_details": test_result.get("rolls_detail", []),
-            "target": state["luck"] if action_type == "test_luck" else state["skill"],
-            "success": test_result["success"],
-            "new_stat_value": new_stat_value,
-            "player_action": state["player_action"],
-        }
-    )
+        new_stat_value = state["skill"]
+
+        narrative_text = format_skill_test_narrative(
+            character_name=state["character_name"],
+            skill_value=state["skill"],
+            roll=test_result["roll"],
+            success=test_result["success"],
+            player_action=state["player_action"],
+        )
+
     updates = {}
     if action_type == "test_luck":
         updates["luck"] = new_stat_value
+
     logger.info(
         f"[generate_test_narrative] Teste de {test_type}: "
         f"{'SUCESSO' if test_result['success'] else 'FALHA'}"
     )
+
     return {
         **state,
         **updates,
-        "narrative_response": response.content,
+        "narrative_response": narrative_text,
         "next_step": "update_state",
     }
 
@@ -385,6 +763,7 @@ def update_game_state_node(state: GameState) -> Dict[str, Any]:
             "player_action": state["player_action"],
             "action_type": state.get("action_type", "unknown"),
             "narrative": state.get("narrative_response", ""),
+            "structured_options": state.get("structured_options", []),  # 🎯 Opções estruturadas
             "stamina": state["stamina"],
             "luck": state["luck"],
             "gold": state.get("gold", 0),
@@ -395,6 +774,27 @@ def update_game_state_node(state: GameState) -> Dict[str, Any]:
         session.current_section = state["current_section"]
         session.inventory = state.get("inventory", [])
         session.flags = state.get("flags", {})
+
+        # 🎯 PERSISTIR ESTADO DE COMBATE (CRÍTICO!)
+        if state.get("in_combat"):
+            session.flags["in_combat"] = True
+            session.flags["combat_data"] = state.get("combat_data")
+            combat_data = state.get("combat_data", {})
+            enemies = combat_data.get("enemies", [])
+            current = combat_data.get("current_enemy_index", 0)
+            if enemies and current < len(enemies):
+                logger.info(f"[update_game_state_node] 💾 Combate persistido: {len(enemies)} inimigo(s), atual: {enemies[current]['name']}")
+        else:
+            # Limpar flags de combate se não estiver em combate
+            session.flags.pop("in_combat", None)
+            session.flags.pop("combat_data", None)
+
+        # Persistir pending_combat_enemies se existir
+        if state.get("pending_combat_enemies"):
+            session.flags["pending_combat_enemies"] = state.get("pending_combat_enemies")
+        else:
+            session.flags.pop("pending_combat_enemies", None)
+
         if state.get("game_over"):
             session.status = GameSession.STATUS_DEAD
         elif state.get("victory"):
@@ -468,10 +868,23 @@ def initialize_state_node(
         from apps.adventures.models import Adventure
 
         adventure = Adventure.objects.get(id=session.adventure_id)
+        # 🎯 RESTAURAR ESTADO DE COMBATE (se existir)
+        in_combat = session.flags.get("in_combat", False)
+        combat_data = session.flags.get("combat_data")
+        pending_combat_enemies = session.flags.get("pending_combat_enemies")
+
+        if in_combat and combat_data:
+            enemies = combat_data.get("enemies", [])
+            current = combat_data.get("current_enemy_index", 0)
+            if enemies and current < len(enemies):
+                logger.info(f"[initialize_state_node] ⚔️ Combate restaurado: {len(enemies)} inimigo(s), atual: {enemies[current]['name']} (ENERGIA: {enemies[current].get('stamina')})")
+
         state: GameState = {
             "session_id": session_id,
             "user_id": user_id,
             "adventure_id": session.adventure_id,
+            "adventure_title": adventure.title,
+            "adventure_description": adventure.description,
             "character_id": session.character_id,
             "character_name": character_state["name"],
             "skill": character_state["skill"],
@@ -495,8 +908,9 @@ def initialize_state_node(
             "section_metadata": {},
             "player_action": player_action,
             "action_type": "",
-            "in_combat": False,
-            "combat_data": None,
+            "in_combat": in_combat,
+            "combat_data": combat_data,
+            "pending_combat_enemies": pending_combat_enemies,
             "flags": session.flags,
             "narrative_response": "",
             "available_actions": [],

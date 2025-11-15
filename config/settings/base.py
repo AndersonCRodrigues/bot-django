@@ -187,5 +187,8 @@ WEAVIATE_GRPC_PORT = config("WEAVIATE_GRPC_PORT", default=50051, cast=int)
 WEAVIATE_SECURE = config("WEAVIATE_SECURE", default=False, cast=bool)
 WEAVIATE_API_KEY = config("WEAVIATE_API_KEY", default=None)
 
-# Google AI Configuration
-GEMINI_API_KEY = config("GOOGLE_API_KEY")
+# Google AI Configuration (deprecated - migrado para OpenAI)
+GEMINI_API_KEY = config("GOOGLE_API_KEY", default="")
+
+# OpenAI Configuration
+OPENAI_API_KEY = config("OPENAI_API_KEY")
